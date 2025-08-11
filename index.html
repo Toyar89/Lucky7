@@ -42,6 +42,10 @@
     .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
     @keyframes bustBackgroundFlash { 0% { background-color: rgba(255, 0, 0, 0.3); } 50% { background-color: rgba(255, 0, 0, 0.9); } 100% { background-color: rgba(255, 0, 0, 0.3); } }
     .bustFlash .card-back { animation: bustBackgroundFlash 0.6s infinite; }
+    .bustFlash .card-back {
+  animation: bustBackgroundFlash 0.6s infinite;
+  color: white !important; /* make text white when bust */
+}
     #status { margin-top: 15px; font-size: min(5vw, 20px); font-weight: bold; }
     .timeUp { font-size: 2.5em; color: red; font-weight: bold; }
    button {
@@ -278,6 +282,7 @@ button:hover {
   </script>
 </body>
 </html>
+
 
 
 
