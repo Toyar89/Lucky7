@@ -16,14 +16,16 @@
       padding: 20px;
     }
     .logo {
-      width: clamp(180px, 40vw, 520px);
-      height: auto;
-      display: block;
-      margin: 0 auto 15px;
-    }
-    @media (min-width: 1024px) {
+  width: clamp(180px, 40vw, 400px); /* default for mobile/tablet */
+  height: auto;
+  display: block;
+  margin: 0 auto 15px;
+}
+
+/* Desktop screens */
+@media (min-width: 1024px) {
   .logo {
-    width: clamp(150px, 25vw, 320px);
+    width: 300px; /* smaller fixed width for desktop */
   }
 }
     .cards { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
@@ -262,4 +264,5 @@
   </script>
 </body>
 </html>
+
 
