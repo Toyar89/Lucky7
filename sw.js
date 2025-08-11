@@ -1,42 +1,38 @@
-// sw.js
-const CACHE_NAME = 'lucky7-v11';
-const CORE_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon.png',
-  './icon-512.png',
-  './logo.png',
-  './logo@2x.png',
-  './logo@3x.png'
-];
+ // sw.js — auto-update runtime cache (no manual version bumps needed)
 
+const RUNTIME_CACHE = 'lucky7-runtime';
+
+// Install: activate immediately
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(CORE_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
 });
 
+// Activate: take control + clean old caches (only keep RUNTIME_CACHE)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null)))
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => (k === RUNTIME_CACHE ? null : caches.delete(k))))
     ).then(() => self.clients.claim())
   );
 });
 
+// Fetch strategy:
+// - For navigations: network-first with cache:'reload', fallback to cached index.html if any
+// - For same-origin GETs (images, sounds, etc.): network-first; on fail, serve from cache
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
+  const url = new URL(req.url);
+
+  // Handle top-level navigations
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
+      fetch(new Request(req.url, { cache: 'reload' }))
+        .then(async (res) => {
           const copy = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put('./index.html', copy));
+          const cache = await caches.open(RUNTIME_CACHE);
+          cache.put(new Request('./index.html'), copy);
           return res;
         })
         .catch(() => caches.match('./index.html'))
@@ -44,17 +40,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const url = new URL(req.url);
+  // Same-origin runtime caching (network-first)
   if (url.origin === location.origin) {
     event.respondWith(
-      caches.match(req).then((hit) => {
-        if (hit) return hit;
-        return fetch(req).then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(req, copy));
-          return res;
-        });
-      })
+      (async () => {
+        try {
+          const fresh = await fetch(req, { cache: 'no-store' });
+          const cache = await caches.open(RUNTIME_CACHE);
+          cache.put(req, fresh.clone());
+          return fresh;
+        } catch (err) {
+          const cached = await caches.match(req);
+          if (cached) return cached;
+          // last resort for assets during offline: no response
+          throw err;
+        }
+      })()
     );
   }
 });
