@@ -16,9 +16,19 @@
       padding: 20px;
     }
     @media (min-width: 1024px) {
-  .logo {
-    width: clamp(150px, 25vw, 320px);
-  }
+.logo{
+  width: min(90vw, 520px);   /* scale with viewport, cap at 520px */
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto 15px;
+}
+
+/* Smaller phones */
+@media (max-width: 400px){
+  .logo{ width: 82vw; }      /* a bit smaller so it never overflows */
+}
+
 }
     .cards { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
     .card-container { perspective: 1000px; }
@@ -271,6 +281,7 @@ button:hover {
   </script>
 </body>
 </html>
+
 
 
 
