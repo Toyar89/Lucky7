@@ -1,18 +1,16 @@
 // sw.js
-const CACHE_NAME = 'lucky7-v10'; // ← bump this to force updates
+const CACHE_NAME = 'lucky7-v10';
 const CORE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon.png',
   './icon-512.png',
-  // Logos (unversioned). Versioned (?v=2) URLs will be cached on first request.
   './logo.png',
   './logo@2x.png',
   './logo@3x.png'
 ];
 
-// Install: pre-cache core shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -21,7 +19,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -30,12 +27,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: cache-first for same-origin GETs, network-first for navigations
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // For top-level navigations, try network first then fall back to cached shell
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -49,7 +44,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For other same-origin requests, use cache-first; if missed, fetch and cache
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     event.respondWith(

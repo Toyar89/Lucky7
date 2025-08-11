@@ -44,7 +44,6 @@
   </style>
 </head>
 <body>
-  <!-- Cache-busting added with ?v=2 -->
   <img
     class="logo"
     src="logo.png?v=2"
@@ -68,14 +67,12 @@
   <audio id="bustSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
 
   <script>
-    // Service worker registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(()=>{});
       });
     }
 
-    // Inline confetti
     (function() {
       const canvas = document.createElement('canvas');
       canvas.className = 'confetti';
@@ -105,7 +102,6 @@
       window.launchConfetti = function(durationMs=5000) { endTime = Date.now() + durationMs; if (!running) { running = true; loop(); } };
     })();
 
-    // Game state
     let cards = [];
     let revealed = [];
     let gameOver = false;
