@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'lucky7-v10';
+const CACHE_NAME = 'lucky7-v11';
 const CORE_ASSETS = [
   './',
   './index.html',
