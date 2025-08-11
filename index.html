@@ -16,7 +16,7 @@
       padding: 20px;
     }
     @media (min-width: 1024px) {
-.logo{
+.logo {
   width: min(90vw, 520px);   /* scale with viewport, cap at 520px */
   max-width: 100%;
   height: auto;
@@ -25,8 +25,22 @@
 }
 
 /* Smaller phones */
-@media (max-width: 400px){
-  .logo{ width: 82vw; }      /* a bit smaller so it never overflows */
+@media (max-width: 400px) {
+  .logo {
+    width: 82vw;
+  }
+}
+
+/* Desktops/laptops */
+@media (min-width: 1024px) {
+  .logo {
+    width: min(20vw, 200px); /* smaller on big screens */
+  }
+
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 }
@@ -279,6 +293,7 @@ button:hover {
   </script>
 </body>
 </html>
+
 
 
 
