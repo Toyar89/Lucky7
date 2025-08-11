@@ -1,4 +1,4 @@
- // sw.js — auto-update runtime cache (no manual version bumps needed)
+// sw.js — auto-update runtime cache (no manual version bumps needed)
 
 const RUNTIME_CACHE = 'lucky7-runtime';
 
