@@ -15,13 +15,11 @@
       margin: 0;
       padding: 20px;
     }
-     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #17173A; /* same as logo background */
-      color: white;
-      margin: 0;
-      padding: 20px;
+    .logo {
+      width: clamp(180px, 40vw, 520px);
+      height: auto;
+      display: block;
+      margin: 0 auto 15px;
     }
     .cards { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
     .card-container { perspective: 1000px; }
@@ -46,7 +44,14 @@
   </style>
 </head>
 <body>
-  <img class="logo" src="logo.png" alt="Lucky 7" />
+  <!-- Cache-busting added with ?v=2 -->
+  <img
+    class="logo"
+    src="logo.png?v=2"
+    srcset="logo.png?v=2 1x, logo@2x.png?v=2 2x, logo@3x.png?v=2 3x"
+    alt="Lucky 7"
+  />
+
   <div class="cards" id="cardContainer"></div>
   <div id="status">Pick any card to start.</div>
   <button id="gameButton" onclick="startGame()">Start</button>
