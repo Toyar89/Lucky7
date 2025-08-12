@@ -16,7 +16,7 @@
       color: white;
       margin: 0;
 
-      /* use safe-area on phones; keep ~20px on desktop */
+      /* safe-area padding for phones; ~20px fallback on desktop */
       padding-top:    max(20px, env(safe-area-inset-top));
       padding-right:  max(20px, env(safe-area-inset-right));
       padding-bottom: max(20px, env(safe-area-inset-bottom));
@@ -278,13 +278,19 @@
       winCount++;
       document.getElementById("winCount").textContent = winCount;
       document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
-      document.querySelectorAll(".card").forEach(c => {
-        c.classList.add("flipped", "winFlash");
+
+      // Flip & gold-flash ALL cards; remove any red flash from previous rounds
+      const allCards = document.querySelectorAll(".card");
+      allCards.forEach(c => {
+        c.classList.remove("bustFlash");          // clear red animation if present
+        c.classList.add("flipped", "winFlash");   // flip and gold flash
         const idx = c.dataset.index;
-        c.querySelector(".card-back").textContent = cards[idx];
+        c.querySelector(".card-back").textContent = cards[idx]; // ensure number is visible
       });
+
       launchConfetti(5000);
-      setTimeout(() => document.querySelectorAll(".card").forEach(c => c.classList.remove("winFlash")), 5000);
+      setTimeout(() => allCards.forEach(c => c.classList.remove("winFlash")), 5000);
+
       gameOver = true;
     }
 
