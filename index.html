@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LUCKY 7</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#17173A" />
+  <style>
+    /* Reset + full screen layout */
+    html, body { height: 100%; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #17173A;
+      color: white;
+      margin: 0;
+      padding: 0;
+      min-height: 100svh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Container width limit for desktop */
+    #splash-screen, #game-container {
+      width: min(900px, 96vw);
+      margin: 0 auto;
+    }
+
+    /* Logo responsiveness */
+    .logo {
+      width: clamp(180px, 35vw, 420px);
+      height: auto;
+      display: block;
+      margin: 0 auto 15px;
+    }
+    @media (min-width: 1024px) {
+      .logo { width: min(20vw, 220px); }
+    }
+
+    /* Splash + fade */
+    #splash-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      opacity: 1;
+      transition: opacity 0.6s ease;
+    }
+    #splash-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #game-container {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s ease;
+    }
+    #game-container.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Cards */
+    .cards { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+    .card-container { perspective: 1000px; }
+    .card-inner {
+      width: min(14vw, 120px);
+      height: min(25vw, 190px);
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s;
+      cursor: pointer;
+    }
+    .card.flipped .card-inner { transform: rotateY(180deg); cursor: default; }
+    .card-face {
+      position: absolute; width: 100%; height: 100%;
+      border-radius: 12px; backface-visibility: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-size: min(8vw, 48px); font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .card-front { background: royalblue; }
+    .card-back { background: white; color: black; transform: rotateY(180deg); }
+    .position-label { font-size: min(4vw, 14px); margin-top: 5px; color: white; text-align: center; }
+
+    /* Scoreboard */
+    .scoreboard { display: flex; justify-content: center; gap: 20px; margin-top: 15px; flex-wrap: wrap; }
+    .scorebox, .timer { background: white; color: black; padding: 10px 20px; border-radius: 8px; font-size: 18px; min-width: 100px; font-weight: bold; }
+
+    /* Animations */
+    @keyframes winCardFlash { 0% { background-color: gold; } 50% { background-color: white; } 100% { background-color: gold; } }
+    .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
+    @keyframes bustBackgroundFlash { 0% { background-color: rgba(255, 0, 0, 0.3); } 50% { background-color: rgba(255, 0, 0, 0.9); } 100% { background-color: rgba(255, 0, 0, 0.3); } }
+    .bustFlash .card-back { animation: bustBackgroundFlash 0.6s infinite; color: white; }
+
+    #status { margin-top: 15px; font-size: min(5vw, 20px); font-weight: bold; }
+    .timeUp { font-size: 2.5em; color: red; font-weight: bold; }
+
+    /* Button */
+    button {
+      margin-top: 15px;
+      padding: 14px 40px;
+      font-size: 20px;
+      font-weight: bold;
+      border-radius: 8px;
+      background: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background: #eee; }
+
+    /* Footer */
+    .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
+
+    /* Confetti canvas */
+    canvas.confetti { position: fixed; inset: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Splash -->
+  <div id="splash-screen">
+    <img src="icon-512.png" alt="Lucky 7" style="width:min(40vw,220px);height:auto;">
+  </div>
+
+  <!-- Game -->
+  <div id="game-container">
+    <img class="logo" src="logo.png?v=3" alt="Lucky 7" onerror="this.onerror=null; this.src='logo.png?v=3';"/>
+    <div class="cards" id="cardContainer"></div>
+    <div id="status">Pick any card to start.</div>
+    <button id="gameButton" onclick="startGame()">Start</button>
+
+    <div class="scoreboard">
+      <div class="scorebox">Won: <span id="winCount">0</span></div>
+      <div class="scorebox">Lost: <span id="loseCount">0</span></div>
+      <div class="timer" id="timer">01:00</div>
+    </div>
+
+    <div class="copyright">© Kev Shirreffs 2025</div>
+
+    <!-- Sounds -->
+    <audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+    <audio id="bustSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+    <audio id="timeUpSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      });
+    }
+
+    /* Confetti effect */
+    (function() {
+      const canvas = document.createElement('canvas');
+      canvas.className = 'confetti';
+      document.body.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+      let W, H, particles = [], running = false, endTime = 0;
+      function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+      window.addEventListener('resize', resize); resize();
+      function spawn(n=5) {
+        for (let i=0;i<n;i++) {
+          particles.push({ x: Math.random()*W, y: -10, vx: (Math.random()-0.5)*2, vy: 2+Math.random()*3, size: 4+Math.random()*6, rot: Math.random()*Math.PI, vr: (Math.random()-0.5)*0.2, shape: Math.random()<0.5 ? 'rect' : 'circle' });
+        }
+      }
+      function step() {
+        ctx.clearRect(0,0,W,H);
+        particles.forEach(p => {
+          p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+          if (p.y > H+20) { p.y = -10; p.x = Math.random()*W; }
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.fillStyle = ['#FFD700','#FF3B3B','#4CAF50','#42A5F5','#FF9800'][Math.floor((p.rot*10)%5+5)%5];
+          if (p.shape === 'rect') ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+          else { ctx.beginPath(); ctx.arc(0,0,p.size/2,0,Math.PI*2); ctx.fill(); }
+          ctx.restore();
+        });
+      }
+      function loop() { if (!running) return; step(); if (Date.now() < endTime) { spawn(3); requestAnimationFrame(loop); } else { running = false; particles = []; ctx.clearRect(0,0,W,H); } }
+      window.launchConfetti = function(durationMs=5000) { endTime = Date.now() + durationMs; if (!running) { running = true; loop(); } };
+    })();
+
+    let cards = [];
+    let revealed = [];
+    let gameOver = false;
+    let requiredPosition = null;
+    let firstMoveMade = false;
+    let winCount = 0;
+    let loseCount = 0;
+    let timerInterval;
+    let timerStarted = false;
+    let timeLeft = 60;
+    let timerDone = false;
+
+    function startGame() {
+      if (timerDone) {
+        document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
+        return;
+      }
+
+      cards = shuffle([1, 2, 3, 4, 5, 6, 7]);
+      revealed = Array(7).fill(false);
+      gameOver = false;
+      requiredPosition = null;
+      firstMoveMade = false;
+
+      const container = document.getElementById("cardContainer");
+      container.innerHTML = "";
+
+      for (let i = 0; i < 7; i++) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "card-container";
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.index = i;
+
+        const cardInner = document.createElement("div");
+        cardInner.className = "card-inner";
+
+        const front = document.createElement("div");
+        front.className = "card-face card-front";
+
+        const back = document.createElement("div");
+        back.className = "card-face card-back";
+        back.textContent = "";
+
+        cardInner.appendChild(front);
+        cardInner.appendChild(back);
+        card.appendChild(cardInner);
+        wrapper.appendChild(card);
+
+        const label = document.createElement("div");
+        label.className = "position-label";
+        label.textContent = i + 1;
+
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
+
+        card.addEventListener("click", () => handleTurn(i, card, back));
+      }
+
+      document.getElementById("status").textContent = "Pick any card to start.";
+      const btn = document.getElementById("gameButton");
+      btn.textContent = "Restart";
+      btn.onclick = startGame;
+    }
+
+    function handleTurn(index, cardElement, backElement) {
+      if (gameOver || timerDone) return;
+
+      if (!firstMoveMade) {
+        document.getElementById("status").textContent = "";
+        firstMoveMade = true;
+        if (!timerStarted) {
+          startTimer();
+          timerStarted = true;
+        }
+      }
+
+      if (requiredPosition !== null && index !== requiredPosition - 1) return;
+      if (revealed[index]) return;
+
+      revealed[index] = true;
+      cardElement.classList.add("flipped");
+      backElement.textContent = cards[index];
+
+      requiredPosition = cards[index];
+
+      if (revealed[requiredPosition - 1] && !gameOver) {
+        bust(requiredPosition - 1);
+      }
+
+      if (revealed.every(r => r)) {
+        handleWin();
+      }
+    }
+
+    function handleWin() {
+      document.getElementById("winSound").play();
+      winCount++;
+      document.getElementById("winCount").textContent = winCount;
+      document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
+      document.querySelectorAll(".card").forEach(c => {
+        c.classList.add("flipped", "winFlash");
+        const idx = c.dataset.index;
+        c.querySelector(".card-back").textContent = cards[idx];
+      });
+      launchConfetti(5000);
+      setTimeout(() => {
+        document.querySelectorAll(".card").forEach(c => c.classList.remove("winFlash"));
+      }, 5000);
+      gameOver = true;
+    }
+
+    function bust(index) {
+      document.getElementById("bustSound").play();
+      loseCount++;
+      document.getElementById("loseCount").textContent = loseCount;
+      const bustedCard = document.querySelectorAll(".card")[index];
+      bustedCard.classList.add("flipped", "bustFlash");
+      bustedCard.querySelector(".card-back").textContent = cards[index];
+      document.getElementById("status").textContent = "❌ Try again";
+      gameOver = true;
+    }
+
+    function shuffle(arr) {
+      let a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function startTimer() {
+      const timerDisplay = document.getElementById("timer");
+      timerDisplay.textContent = formatTime(timeLeft);
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = formatTime(timeLeft);
+
+        if (timeLeft <= 0) {
+          document.getElementById("timeUpSound").play();
+          clearInterval(timerInterval);
+          timerDone = true;
+          gameOver = true;
+          document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
+          const btn = document.getElementById("gameButton");
+          btn.textContent = "Play";
+          btn.onclick = () => location.reload();
+        }
+      }, 1000);
+    }
+
+    function formatTime(seconds) {
+      let min = Math.floor(seconds / 60);
+      let sec = seconds % 60;
+      return `${min.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+    }
+
+    /* Splash delay then show game */
+    window.addEventListener('load', () => {
+      const SPLASH_MS = 4000;
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        const game = document.getElementById('game-container');
+        splash.classList.add('hidden');
+        setTimeout(() => {
+          game.classList.add('visible');
+          startGame();
+        }, 650);
+      }, SPLASH_MS);
+    });
+  </script>
+</body>
+</html>
