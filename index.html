@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- stable mobile viewport + safe areas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>LUCKY 7</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#17173A" />
@@ -14,15 +15,21 @@
       background: #17173A;
       color: white;
       margin: 0;
-      padding: 20px;            /* restore padding so the top row isn't glued to the edge */
-      overflow-y: auto;         /* allow scrolling again */
+
+      /* use safe-area on phones; keep ~20px on desktop */
+      padding-top:    max(20px, env(safe-area-inset-top));
+      padding-right:  max(20px, env(safe-area-inset-right));
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
+      padding-left:   max(20px, env(safe-area-inset-left));
+
+      overflow-y: auto;
+      text-align: center;
     }
 
     /* Centered content wrapper */
     .page {
       max-width: 1200px;        /* wide enough for 7 cards in a row */
       margin: 0 auto;
-      text-align: center;
     }
 
     /* Splash overlay (always centered) */
@@ -41,11 +48,12 @@
       opacity: 0;
       pointer-events: none;
     }
-    #splash-overlay img { width: min(40vw, 220px); height: auto; }
+    /* use dvw so it doesn't shrink when mobile URL bar collapses */
+    #splash-overlay img { width: clamp(180px, 36dvw, 240px); height: auto; }
 
-    /* Logo */
+    /* Logo (use dvw for stability on mobile) */
     .logo {
-      width: clamp(160px, 30vw, 360px);
+      width: clamp(180px, 32dvw, 360px);
       height: auto;
       display: block;
       margin: 0 auto 18px;
@@ -62,7 +70,7 @@
     }
     .card-container { perspective: 1000px; }
 
-    /* Make cards shrink a bit sooner so 7 fit on one row */
+    /* Size so 7 fit on one row on desktop */
     .card-inner {
       width: clamp(90px, 12vw, 120px);
       height: clamp(150px, 21vw, 200px);
@@ -82,6 +90,21 @@
     .card-front { background: royalblue; }
     .card-back { background: white; color: black; transform: rotateY(180deg); }
     .position-label { font-size: clamp(12px, 1.6vw, 14px); margin-top: 5px; color: white; }
+
+    /* Phone layout: nice centered 3-3-1 grid */
+    @media (max-width: 780px) {
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        justify-items: center;
+        gap: 12px;
+      }
+      .card-inner {
+        width: clamp(92px, 24dvw, 120px);
+        height: clamp(152px, 38dvw, 200px);
+      }
+      .position-label { font-size: clamp(12px, 1.8dvw, 14px); }
+    }
 
     /* Scoreboard */
     .scoreboard { display: flex; justify-content: center; gap: 20px; margin-top: 15px; flex-wrap: wrap; }
@@ -309,4 +332,3 @@
   </script>
 </body>
 </html>
-
