@@ -29,31 +29,31 @@
       text-align: center;
     }
 
-    /* Centered content wrapper (scales to fit if needed) */
+    /* Centered content wrapper */
     .page {
       max-width: 1200px;
       margin: 0 auto;
-      display: inline-block;           /* allow transform scaling */
-      transition: transform 0.2s ease; /* smooth when we scale */
+      display: inline-block;           /* allow transform scaling if you add it later */
+      transition: transform 0.2s ease;
+      padding: 20px;
     }
 
-    /* ===== Splash overlay ===== */
+    /* ===== Splash overlay (fixed-size logo so it NEVER jumps) ===== */
     #splash-overlay {
       position: fixed; inset: 0; background: #17173A;
       display: flex; align-items: center; justify-content: center;
       opacity: 1; transition: opacity 0.6s ease; z-index: 9999;
     }
     #splash-overlay.hidden { opacity: 0; pointer-events: none; }
-    /* FIXED size so it never jumps on mobile */
-   /* Splash overlay logo - fixed size so it doesn't resize on load */
-#splash-overlay img {
-  width: 220px;   /* fixed width */
-  max-width: 80vw; /* keeps it responsive on smaller screens */
-  height: auto;
-}
 
+    /* FIXED width so mobile URL bar changes don't resize it */
+    #splash-overlay img {
+      width: 220px;      /* fixed */
+      height: auto;
+      max-width: 80vw;   /* still safe on very narrow screens */
+    }
 
-    /* ===== Logo ===== */
+    /* ===== Logo above game ===== */
     .logo {
       width: clamp(180px, 32dvw, 360px);
       height: auto;
@@ -84,7 +84,7 @@
     .card-back  { background: #fff; color: #000; transform: rotateY(180deg); }
     .position-label { font-size: clamp(12px, 1.6vw, 14px); margin-top: 5px; color: #fff; }
 
-    /* Phone layout: neat centered grid */
+    /* ===== Phone layout: neat centered grid ===== */
     @media (max-width: 780px) {
       .cards {
         display: grid; grid-template-columns: repeat(3, 1fr);
@@ -111,46 +111,26 @@
 
     .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
 
-    /* ===== Animations ===== */
+    /* ===== Animations used by the JS ===== */
     @keyframes winCardFlash { 0%{background-color: gold;} 50%{background-color:#fff;} 100%{background-color: gold;} }
     .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
 
     @keyframes bustBackgroundFlash { 0%{background: rgba(255,0,0,0.3);} 50%{background: rgba(255,0,0,0.9);} 100%{background: rgba(255,0,0,0.3);} }
     .bustFlash .card-back { animation: bustBackgroundFlash 0.6s infinite; color: #fff; }
 
-    /* ===== Compact mode (auto by JS on short screens) ===== */
-    body.compact .logo { width: clamp(150px, 28dvw, 300px); margin-bottom: 10px; }
-    body.compact .cards { gap: 8px; margin: 10px 0; }
-    body.compact .card-inner { width: clamp(86px, 22dvw, 110px); height: clamp(140px, 34dvw, 170px); }
-    body.compact .position-label { font-size: clamp(11px, 1.6dvw, 13px); }
-    body.compact #status { font-size: 18px; }
-    body.compact .scorebox, body.compact .timer { padding: 8px 14px; font-size: 16px; min-width: 88px; }
-    body.compact button { padding: 12px 56px; font-size: 18px; }
-
-    @media (max-height: 740px) {
-      body {
-        padding-top: max(12px, env(safe-area-inset-top));
-        padding-bottom: max(8px, env(safe-area-inset-bottom));
-      }
-    }
-    @media (max-height: 640px) {
-      body.compact .card-inner { width: clamp(80px, 20dvw, 104px); height: clamp(130px, 32dvw, 160px); }
-    }
-
     /* Confetti canvas */
     canvas.confetti { position: fixed; inset: 0; pointer-events: none; }
   </style>
 </head>
 <body>
-  <!-- Splash overlay -->
+  <!-- Splash (4s) -->
   <div id="splash-overlay">
     <img src="icon-512.png" alt="Lucky 7">
   </div>
 
-  <!-- Page content (hidden until splash finishes) -->
-  <div id="splash-overlay">...</div>
-<div id="page" style="display:none;"> ... game content ... </div>
-<script src="app.js"></script>
+  <!-- Game (hidden until splash ends; app.js reveals it at 4s) -->
+  <div class="page" id="page" style="display:none;">
+    <img class="logo" src="logo.png?v=3" alt="Lucky 7" onerror="this.onerror=null; this.src='logo.png?v=3';"/>
 
     <div class="cards" id="cardContainer"></div>
     <div id="status">Pick any card to start.</div>
@@ -170,9 +150,7 @@
     <audio id="timeUpSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
   </div>
 
-  <!-- App JS -->
+  <!-- Game logic -->
   <script src="app.js"></script>
 </body>
 </html>
-
-
