@@ -13,6 +13,31 @@ window.addEventListener('load', toggleCompact);
 window.addEventListener('resize', toggleCompact);
 window.addEventListener('orientationchange', toggleCompact);
 
+// ===== Fit-to-viewport scaling (if content taller than screen) =====
+function fitToViewport() {
+  const page = document.querySelector('.page');
+  if (!page) return;
+
+  // clear previous scale to measure natural height
+  page.style.transform = '';
+
+  const styles = getComputedStyle(document.body);
+  const padTop = parseFloat(styles.paddingTop) || 0;
+  const padBottom = parseFloat(styles.paddingBottom) || 0;
+  const availableH = window.innerHeight - padTop - padBottom;
+
+  const neededH = page.getBoundingClientRect().height;
+
+  if (neededH > availableH) {
+    const scale = Math.max(0.82, availableH / neededH); // don't get too tiny
+    page.style.transform = `scale(${scale})`;
+    page.style.transformOrigin = 'top center';
+  }
+}
+window.addEventListener('load', fitToViewport);
+window.addEventListener('resize', fitToViewport);
+window.addEventListener('orientationchange', fitToViewport);
+
 // ===== Confetti (lightweight) =====
 (function () {
   const canvas = document.createElement('canvas');
@@ -124,6 +149,9 @@ function startGame() {
   const btn = document.getElementById("gameButton");
   btn.textContent = "Restart";
   btn.onclick = startGame;
+
+  // After layout, ensure it fits the viewport
+  setTimeout(fitToViewport, 0);
 }
 
 // ===== Turn Logic =====
