@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Stable mobile viewport + safe areas -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>LUCKY 7</title>
 
@@ -11,26 +10,6 @@
   <meta name="theme-color" content="#17173A" />
 
   <style>
-/* let JS scale the whole game neatly */
-.page {
-  transform-origin: top center;     /* important for scaling */
-  transition: transform 0.2s ease;  /* smooth when it scales */
-}
-
-/* extra compact tweaks on short screens */
-@media (max-height: 740px) {
-  .cards { gap: 8px; }
-  .card-inner { width: clamp(86px, 22dvw, 110px); height: clamp(140px, 34dvw, 170px); }
-  button { padding: 12px 56px; font-size: 18px; }
-  .scorebox, .timer { padding: 8px 14px; font-size: 16px; min-width: 88px; }
-}
-
-@media (max-height: 640px) {
-  .card-inner { width: clamp(80px, 20dvw, 104px); height: clamp(130px, 32dvw, 160px); }
-}
-
-
-    
     /* ===== Page & Safe-Areas ===== */
     html, body { height: 100%; }
     body {
@@ -49,13 +28,14 @@
       text-align: center;
     }
 
-    /* Centered content wrapper */
+    /* Centered content wrapper (the whole game) */
     .page {
       max-width: 1200px;
       margin: 0 auto;
-      display: inline-block;           /* allow transform scaling if you add it later */
-      transition: transform 0.2s ease;
+      display: inline-block;           /* allow transform scaling */
+      transition: transform 0.2s ease; /* used by fitToViewport() */
       padding: 20px;
+      transform-origin: top center;    /* scale from the top */
     }
 
     /* ===== Splash overlay (fixed-size logo so it NEVER jumps) ===== */
@@ -66,7 +46,7 @@
     }
     #splash-overlay.hidden { opacity: 0; pointer-events: none; }
 
-    /* FIXED width so mobile URL bar changes don't resize it */
+    /* Fixed width so mobile URL bar changes don't resize it */
     #splash-overlay img {
       width: 220px;      /* fixed */
       height: auto;
@@ -138,6 +118,17 @@
     @keyframes bustBackgroundFlash { 0%{background: rgba(255,0,0,0.3);} 50%{background: rgba(255,0,0,0.9);} 100%{background: rgba(255,0,0,0.3);} }
     .bustFlash .card-back { animation: bustBackgroundFlash 0.6s infinite; color: #fff; }
 
+    /* ===== Compact tweaks for short screens ===== */
+    @media (max-height: 740px) {
+      .cards { gap: 8px; }
+      .card-inner { width: clamp(86px, 22dvw, 110px); height: clamp(140px, 34dvw, 170px); }
+      button { padding: 12px 56px; font-size: 18px; }
+      .scorebox, .timer { padding: 8px 14px; font-size: 16px; min-width: 88px; }
+    }
+    @media (max-height: 640px) {
+      .card-inner { width: clamp(80px, 20dvw, 104px); height: clamp(130px, 32dvw, 160px); }
+    }
+
     /* Confetti canvas */
     canvas.confetti { position: fixed; inset: 0; pointer-events: none; }
   </style>
@@ -164,8 +155,8 @@
 
     <div class="copyright">© Kev Shirreffs 2025</div>
 
-    <!-- Sounds -->
-    <audio id="winSound" src="applause.mp3"></audio>
+    <!-- Sounds (swap winSound to your applause file if you add one locally) -->
+    <audio id="winSound"  src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
     <audio id="bustSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
     <audio id="timeUpSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
   </div>
@@ -174,4 +165,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
