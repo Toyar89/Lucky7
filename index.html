@@ -45,11 +45,13 @@
     }
     #splash-overlay.hidden { opacity: 0; pointer-events: none; }
     /* FIXED size so it never jumps on mobile */
-    #splash-overlay img {
-      width: 220px;     /* fixed pixels */
-      max-width: 90%;   /* still safe on tiny screens */
-      height: auto;
-    }
+   /* Splash overlay logo - fixed size so it doesn't resize on load */
+#splash-overlay img {
+  width: 220px;   /* fixed width */
+  max-width: 80vw; /* keeps it responsive on smaller screens */
+  height: auto;
+}
+
 
     /* ===== Logo ===== */
     .logo {
@@ -172,4 +174,5 @@
   <script src="app.js"></script>
 </body>
 </html>
+
 
