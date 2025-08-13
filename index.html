@@ -19,7 +19,7 @@
       color: white;
       margin: 0;
 
-      /* safe-area padding for phones; ~16px fallback on desktop */
+      /* safe-area padding for phones; fallback on desktop */
       padding-top:    max(16px, env(safe-area-inset-top));
       padding-right:  max(16px, env(safe-area-inset-right));
       padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -29,8 +29,13 @@
       text-align: center;
     }
 
-    /* Centered content wrapper */
-    .page { max-width: 1200px; margin: 0 auto; }
+    /* Centered content wrapper (scales to fit if needed) */
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: inline-block;           /* allow transform scaling */
+      transition: transform 0.2s ease; /* smooth when we scale */
+    }
 
     /* ===== Splash overlay ===== */
     #splash-overlay {
@@ -43,8 +48,10 @@
 
     /* ===== Logo ===== */
     .logo {
-      width: clamp(180px, 32dvw, 360px); height: auto;
-      display: block; margin: 0 auto 18px;
+      width: clamp(180px, 32dvw, 360px);
+      height: auto;
+      display: block;
+      margin: 0 auto 18px;
     }
     @media (min-width: 1024px) { .logo { width: min(18vw, 220px); } }
 
