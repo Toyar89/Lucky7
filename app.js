@@ -9,7 +9,6 @@ if ('serviceWorker' in navigator) {
 function toggleCompact() {
   document.body.classList.toggle('compact', window.innerHeight < 740);
 }
-window.addEventListener('load', toggleCompact);
 window.addEventListener('resize', toggleCompact);
 window.addEventListener('orientationchange', toggleCompact);
 
@@ -34,7 +33,6 @@ function fitToViewport() {
     page.style.transformOrigin = 'top center';
   }
 }
-window.addEventListener('load', fitToViewport);
 window.addEventListener('resize', fitToViewport);
 window.addEventListener('orientationchange', fitToViewport);
 
@@ -151,7 +149,10 @@ function startGame() {
   btn.onclick = startGame;
 
   // After layout, ensure it fits the viewport
-  setTimeout(fitToViewport, 0);
+  setTimeout(() => {
+    toggleCompact();
+    fitToViewport();
+  }, 0);
 }
 
 // ===== Turn Logic =====
@@ -245,12 +246,19 @@ function formatTime(s) {
   return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
 }
 
-// ===== Splash timing =====
+// ===== Splash timing (fixed-size, open at 4s) =====
 window.addEventListener('load', () => {
   const SPLASH_MS = 4000;
   setTimeout(() => {
+    // show the game immediately at 4s
+    const page = document.getElementById('page');
+    page.style.display = 'inline-block';
+
+    // start the game now
+    startGame();
+
+    // fade the splash away (overlays above, will fade while game is visible)
     const splash = document.getElementById('splash-overlay');
     splash.classList.add('hidden');
-    setTimeout(() => startGame(), 650);
   }, SPLASH_MS);
 });
