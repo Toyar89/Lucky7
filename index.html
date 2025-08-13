@@ -11,6 +11,26 @@
   <meta name="theme-color" content="#17173A" />
 
   <style>
+/* let JS scale the whole game neatly */
+.page {
+  transform-origin: top center;     /* important for scaling */
+  transition: transform 0.2s ease;  /* smooth when it scales */
+}
+
+/* extra compact tweaks on short screens */
+@media (max-height: 740px) {
+  .cards { gap: 8px; }
+  .card-inner { width: clamp(86px, 22dvw, 110px); height: clamp(140px, 34dvw, 170px); }
+  button { padding: 12px 56px; font-size: 18px; }
+  .scorebox, .timer { padding: 8px 14px; font-size: 16px; min-width: 88px; }
+}
+
+@media (max-height: 640px) {
+  .card-inner { width: clamp(80px, 20dvw, 104px); height: clamp(130px, 32dvw, 160px); }
+}
+
+
+    
     /* ===== Page & Safe-Areas ===== */
     html, body { height: 100%; }
     body {
@@ -154,3 +174,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+
