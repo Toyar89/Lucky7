@@ -1,81 +1,95 @@
-/* Service worker registration */
+/* ===== Service worker registration ===== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
 
-/* Confetti animation */
-(function() {
+/* ===== Fit the whole game to the screen if it's too tall ===== */
+function fitToViewport() {
+  const page = document.getElementById('page');
+  if (!page) return;
+
+  // clear previous scale to measure natural height
+  page.style.transform = '';
+
+  // available height = viewport minus body padding (safe-area included)
+  const styles = getComputedStyle(document.body);
+  const padTop = parseFloat(styles.paddingTop) || 0;
+  const padBottom = parseFloat(styles.paddingBottom) || 0;
+  const availableH = window.innerHeight - padTop - padBottom;
+
+  const neededH = page.getBoundingClientRect().height;
+
+  if (neededH > availableH) {
+    // don’t go below 0.82 so it stays readable
+    const scale = Math.max(0.82, availableH / neededH);
+    page.style.transform = `scale(${scale})`;
+    page.style.transformOrigin = 'top center';
+  }
+}
+window.addEventListener('resize', fitToViewport);
+window.addEventListener('orientationchange', fitToViewport);
+
+/* ===== Confetti (lightweight) ===== */
+(function () {
   const canvas = document.createElement('canvas');
   canvas.className = 'confetti';
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d');
   let W, H, particles = [], running = false, endTime = 0;
-  
-  function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
-  
+
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize); resize();
+
   function spawn(n = 5) {
     for (let i = 0; i < n; i++) {
       particles.push({
-        x: Math.random() * W,
-        y: -10,
-        vx: (Math.random() - 0.5) * 2,
-        vy: 2 + Math.random() * 3,
-        size: 4 + Math.random() * 6,
-        rot: Math.random() * Math.PI,
-        vr: (Math.random() - 0.5) * 0.2,
+        x: Math.random() * W, y: -10,
+        vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3,
+        size: 4 + Math.random() * 6, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.2,
         shape: Math.random() < 0.5 ? 'rect' : 'circle'
       });
     }
   }
-  
   function step() {
     ctx.clearRect(0, 0, W, H);
     particles.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.rot += p.vr;
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
       if (p.y > H + 20) { p.y = -10; p.x = Math.random() * W; }
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.fillStyle = ['#FFD700', '#FF3B3B', '#4CAF50', '#42A5F5', '#FF9800'][Math.floor((p.rot * 10) % 5 + 5) % 5];
-      if (p.shape === 'rect') ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
-      else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2); ctx.fill(); }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = ['#FFD700','#FF3B3B','#4CAF50','#42A5F5','#FF9800'][Math.floor((p.rot*10)%5+5)%5];
+      if (p.shape === 'rect') ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+      else { ctx.beginPath(); ctx.arc(0,0,p.size/2,0,Math.PI*2); ctx.fill(); }
       ctx.restore();
     });
   }
-  
   function loop() {
     if (!running) return;
     step();
-    if (Date.now() < endTime) {
-      spawn(3);
-      requestAnimationFrame(loop);
-    } else {
-      running = false;
-      particles = [];
-      ctx.clearRect(0, 0, W, H);
-    }
+    if (Date.now() < endTime) { spawn(3); requestAnimationFrame(loop); }
+    else { running = false; particles = []; ctx.clearRect(0, 0, W, H); }
   }
-  
-  window.launchConfetti = function(durationMs = 5000) {
+  window.launchConfetti = function (durationMs = 5000) {
     endTime = Date.now() + durationMs;
     if (!running) { running = true; loop(); }
   };
 })();
 
-/* Game state variables */
-let cards = [], revealed = [], gameOver = false, requiredPosition = null, firstMoveMade = false;
-let winCount = 0, loseCount = 0;
-let timerInterval, timerStarted = false, timeLeft = 60, timerDone = false;
+/* ===== Game state ===== */
+let cards = [];
+let revealed = [];
+let gameOver = false;
+let requiredPosition = null;
+let firstMoveMade = false;
+let winCount = 0;
+let loseCount = 0;
+let timerInterval;
+let timerStarted = false;
+let timeLeft = 60;
+let timerDone = false;
 
+/* ===== Build / Start ===== */
 function startGame() {
   if (timerDone) {
     document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
@@ -128,8 +142,12 @@ function startGame() {
   const btn = document.getElementById("gameButton");
   btn.textContent = "Restart";
   btn.onclick = startGame;
+
+  // Fit to the screen after DOM is ready
+  setTimeout(fitToViewport, 0);
 }
 
+/* ===== Turn Logic ===== */
 function handleTurn(index, cardElement, backElement) {
   if (gameOver || timerDone) return;
 
@@ -155,18 +173,25 @@ function handleTurn(index, cardElement, backElement) {
   if (revealed.every(r => r)) handleWin();
 }
 
+/* ===== Win / Bust ===== */
 function handleWin() {
   document.getElementById("winSound").play();
   winCount++;
   document.getElementById("winCount").textContent = winCount;
   document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
-  document.querySelectorAll(".card").forEach(c => {
+
+  // Flip & gold-flash ALL cards; remove any red flash from previous rounds
+  const allCards = document.querySelectorAll(".card");
+  allCards.forEach(c => {
+    c.classList.remove("bustFlash");
     c.classList.add("flipped", "winFlash");
     const idx = c.dataset.index;
     c.querySelector(".card-back").textContent = cards[idx];
   });
+
   launchConfetti(5000);
-  setTimeout(() => document.querySelectorAll(".card").forEach(c => c.classList.remove("winFlash")), 5000);
+  setTimeout(() => allCards.forEach(c => c.classList.remove("winFlash")), 5000);
+
   gameOver = true;
 }
 
@@ -181,6 +206,7 @@ function bust(index) {
   gameOver = true;
 }
 
+/* ===== Helpers ===== */
 function shuffle(arr) {
   let a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -199,8 +225,7 @@ function startTimer() {
     if (timeLeft <= 0) {
       document.getElementById("timeUpSound").play();
       clearInterval(timerInterval);
-      timerDone = true;
-      gameOver = true;
+      timerDone = true; gameOver = true;
       document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
       const btn = document.getElementById("gameButton");
       btn.textContent = "Play"; btn.onclick = () => location.reload();
@@ -212,42 +237,23 @@ function formatTime(s) {
   const m = Math.floor(s / 60), sec = s % 60;
   return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
 }
-// --- Fit the whole game to the screen if it's too tall
-function fitToViewport() {
-  const page = document.getElementById('page');
-  if (!page) return;
 
-  // clear previous scale to measure natural height
-  page.style.transform = '';
-
-  // available height = viewport minus body padding (safe-area included)
-  const styles = getComputedStyle(document.body);
-  const padTop = parseFloat(styles.paddingTop) || 0;
-  const padBottom = parseFloat(styles.paddingBottom) || 0;
-  const availableH = window.innerHeight - padTop - padBottom;
-
-  const neededH = page.getBoundingClientRect().height;
-
-  if (neededH > availableH) {
-    // don’t go below 0.82 so it stays readable
-    const scale = Math.max(0.82, availableH / neededH);
-    page.style.transform = `scale(${scale})`;
-  }
-}
-
-// keep it fitting as the phone rotates / URL bar changes size
-window.addEventListener('load', fitToViewport);
-window.addEventListener('resize', fitToViewport);
-window.addEventListener('orientationchange', fitToViewport);
-
-/* Splash logic: after 4 seconds, show game instantly */
+/* ===== Splash logic: after 4 seconds, show game instantly ===== */
 window.addEventListener('load', () => {
   const SPLASH_MS = 4000;
   setTimeout(() => {
-    document.getElementById('page').style.display = 'inline-block';
+    // 1) Show the game immediately
+    const page = document.getElementById('page');
+    page.style.display = 'inline-block';
+
+    // 2) Build the board right away
     startGame();
+
+    // 3) Remove the splash instantly (no fade delay)
     const splash = document.getElementById('splash-overlay');
     if (splash) splash.remove();
+
+    // Ensure final fit after splash removal
+    setTimeout(fitToViewport, 0);
   }, SPLASH_MS);
 });
-
