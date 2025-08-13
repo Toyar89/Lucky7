@@ -212,6 +212,33 @@ function formatTime(s) {
   const m = Math.floor(s / 60), sec = s % 60;
   return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
 }
+// --- Fit the whole game to the screen if it's too tall
+function fitToViewport() {
+  const page = document.getElementById('page');
+  if (!page) return;
+
+  // clear previous scale to measure natural height
+  page.style.transform = '';
+
+  // available height = viewport minus body padding (safe-area included)
+  const styles = getComputedStyle(document.body);
+  const padTop = parseFloat(styles.paddingTop) || 0;
+  const padBottom = parseFloat(styles.paddingBottom) || 0;
+  const availableH = window.innerHeight - padTop - padBottom;
+
+  const neededH = page.getBoundingClientRect().height;
+
+  if (neededH > availableH) {
+    // don’t go below 0.82 so it stays readable
+    const scale = Math.max(0.82, availableH / neededH);
+    page.style.transform = `scale(${scale})`;
+  }
+}
+
+// keep it fitting as the phone rotates / URL bar changes size
+window.addEventListener('load', fitToViewport);
+window.addEventListener('resize', fitToViewport);
+window.addEventListener('orientationchange', fitToViewport);
 
 /* Splash logic: after 4 seconds, show game instantly */
 window.addEventListener('load', () => {
@@ -223,3 +250,4 @@ window.addEventListener('load', () => {
     if (splash) splash.remove();
   }, SPLASH_MS);
 });
+
