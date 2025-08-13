@@ -44,7 +44,12 @@
       opacity: 1; transition: opacity 0.6s ease; z-index: 9999;
     }
     #splash-overlay.hidden { opacity: 0; pointer-events: none; }
-    #splash-overlay img { width: clamp(180px, 36dvw, 240px); height: auto; }
+    /* FIXED size so it never jumps on mobile */
+    #splash-overlay img {
+      width: 220px;     /* fixed pixels */
+      max-width: 90%;   /* still safe on tiny screens */
+      height: auto;
+    }
 
     /* ===== Logo ===== */
     .logo {
@@ -140,8 +145,8 @@
     <img src="icon-512.png" alt="Lucky 7">
   </div>
 
-  <!-- Page content -->
-  <div class="page" id="page">
+  <!-- Page content (hidden until splash finishes) -->
+  <div class="page" id="page" style="display:none;">
     <img class="logo" src="logo.png?v=3" alt="Lucky 7" onerror="this.onerror=null; this.src='logo.png?v=3';"/>
 
     <div class="cards" id="cardContainer"></div>
