@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>LUCKY 7</title>
-<link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#17173A" />
 <style>
   :root { --bg:#17173A; --fg:#ffffff; --card:#ffffff; --accent:#ffffff; }
@@ -25,6 +24,7 @@
     margin: 0 auto 18px;
   }
 
+  /* Cards layout */
   .cards {
     display: flex;
     justify-content: center;
@@ -51,7 +51,7 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
   }
   .card-front { background: royalblue; }
-  .card-back { background: var(--card); color: #000; transform: rotateY(180deg); }
+  .card-back  { background: var(--card); color: #000; transform: rotateY(180deg); }
   .position-label { font-size: clamp(12px, 1.6vw, 14px); margin-top: 5px; color: var(--fg); }
 
   /* Scoreboard */
@@ -61,19 +61,20 @@
     font-size: 18px; min-width: 100px; font-weight: bold;
   }
 
-  /* Buttons row */
+  /* Buttons row — keep on the same line (no wrap) */
   .button-row {
     display: flex;
     justify-content: center;
-    gap: 24px;                 /* space between buttons */
+    align-items: center;
+    gap: 16px;
     margin-top: 15px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;          /* <-- stay on one line */
   }
 
   /* Primary (Start/Restart) — wider */
   #gameButton {
-    padding: 14px 60px;        /* wider */
-    min-width: 220px;          /* guaranteed width */
+    padding: 14px 60px;         /* wide */
+    min-width: 220px;           /* guaranteed width */
     font-size: 20px;
     font-weight: bold;
     border-radius: 8px;
@@ -81,6 +82,7 @@
     color: #000;
     border: none;
     cursor: pointer;
+    flex: 0 1 auto;             /* allow slight shrink if needed */
   }
   #gameButton:hover { background: #eee; }
 
@@ -91,12 +93,20 @@
     font-size: 20px;
     font-weight: bold;
     border-radius: 8px;
-    background: var(--bg);     /* same as page */
-    color: var(--fg);          /* white text */
+    background: var(--bg);      /* same as page */
+    color: var(--fg);           /* white text */
     border: 2px solid var(--accent);
     cursor: pointer;
+    flex: 0 1 auto;             /* allow slight shrink if needed */
   }
   #howToPlayButton:hover { background: #1e1e45; }
+
+  /* Ensure both stay on one row even on small phones */
+  @media (max-width: 420px) {
+    .button-row { gap: 10px; }
+    #gameButton { padding: 12px 36px; min-width: 180px; font-size: 18px; }
+    #howToPlayButton { padding: 12px 26px; min-width: 150px; font-size: 18px; }
+  }
 
   /* Animations */
   @keyframes winCardFlash { 0%, 100% { background-color: gold; } 50% { background-color: white; } }
@@ -185,7 +195,7 @@
   </div>
 </div>
 
-<!-- Sounds -->
+<!-- Sounds (swap src to your local MP3 if desired) -->
 <audio id="winSound" src="applause.mp3"></audio>
 <audio id="bustSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
 <audio id="timeUpSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
@@ -321,7 +331,7 @@ function handleWin() {
   document.getElementById("winCount").textContent = winCount;
   document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
 
-  // Flip & gold-flash ALL cards. Also clear any red-flash from previous state.
+  // Flip & gold-flash ALL cards; clear any red flash
   const allCards = document.querySelectorAll(".card");
   allCards.forEach(c => {
     c.classList.remove("bustFlash");
@@ -330,7 +340,7 @@ function handleWin() {
     c.querySelector(".card-back").textContent = cards[idx];
   });
 
-  // Confetti celebration (restored)
+  // Confetti celebration
   launchConfetti(5000);
 
   // Stop flashing after 5s (cards stay face up)
