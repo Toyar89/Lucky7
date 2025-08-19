@@ -214,10 +214,13 @@
 </div>
 
 <!-- Sounds -->
-<audio id="winSound" src="applause.mp3"></audio>
-<audio id="bustSound" src="boom.mp3"></audio>
+<audio id="winSound"    src="applause.mp3"></audio>
+<audio id="bustSound"   src="boom.mp3"></audio>
 <audio id="timeUpSound" src="timeup.mp3"></audio>
-<audio id="flipSound" src="click.mp3"></audio>
+
+<!-- add preload so it’s ready instantly -->
+<audio id="flipSound"   src="click.mp3" preload="auto"></audio>
+
   
 <!-- Floating Install button -->
 <button id="installPromptBtn">Install App</button>
@@ -440,6 +443,7 @@ startGame();
 </script>
 </body>
 </html>
+
 
 
 
