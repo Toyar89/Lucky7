@@ -370,7 +370,7 @@ function handleWin() {
 }
 
 function bust(index) {
-  document.getElementById("bustSound").play();
+  playSound("bustSound", { clone: true }); // <-- always fires, even after flip
   loseCount++;
   document.getElementById("loseCount").textContent = loseCount;
   const bustedCard = document.querySelectorAll(".card")[index];
@@ -443,6 +443,7 @@ startGame();
 </script>
 </body>
 </html>
+
 
 
 
