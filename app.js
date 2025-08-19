@@ -1,3 +1,23 @@
+function playSound(id, { clone = false } = {}) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    if (clone) {
+      const node = el.cloneNode(true);
+      node.volume = el.volume ?? 1;
+      node.addEventListener('ended', () => node.remove());
+      document.body.appendChild(node);
+      node.currentTime = 0;
+      node.play().catch(()=>{});
+    } else {
+      el.currentTime = 0;
+      el.play().catch(()=>{});
+    }
+  } catch(_) {}
+}
+
+
+
 /* ===== Service worker registration ===== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -263,4 +283,5 @@ window.addEventListener('load', () => {
     setTimeout(fitToViewport, 0);
   }, SPLASH_MS);
 });
+
 
