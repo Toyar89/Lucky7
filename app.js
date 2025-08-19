@@ -161,9 +161,15 @@ function handleTurn(index, cardElement, backElement) {
   if (revealed[index]) return;
 
   revealed[index] = true;
-  cardElement.classList.add("flipped");
-  backElement.textContent = cards[index];
+cardElement.classList.add("flipped");
+backElement.textContent = cards[index];
 
+// play flip sound
+const flipAudio = document.getElementById("flipSound");
+if (flipAudio) {
+  flipAudio.currentTime = 0; // rewind so it can replay quickly
+  flipAudio.play();
+}
   requiredPosition = cards[index];
 
   if (revealed[requiredPosition - 1] && !gameOver) {
@@ -257,3 +263,4 @@ window.addEventListener('load', () => {
     setTimeout(fitToViewport, 0);
   }, SPLASH_MS);
 });
+
