@@ -114,23 +114,19 @@
   .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
 
   @keyframes bustBackgroundFlash {
-  0%   { background-color: rgba(255,0,0,0.3); }
-  50%  { background-color: rgba(255,0,0,0.9); }
-  100% { background-color: rgba(255,0,0,0.3); }
-}
-
-/* Bust = animate the back face and keep number readable */
-.card.bustFlash .card-back {
-  animation: bustBackgroundFlash 0.6s infinite;
-  color: #fff;
-}
-
+    0%   { background-color: rgba(255,0,0,0.3); }
+    50%  { background-color: rgba(255,0,0,0.9); }
+    100% { background-color: rgba(255,0,0,0.3); }
+  }
+  /* Bust = animate the back face and keep number readable */
+  .card.bustFlash .card-back {
+    animation: bustBackgroundFlash 0.6s infinite;
+    color: #fff;
+  }
 
   #status { margin-top: 15px; font-size: clamp(16px, 2.4vw, 20px); font-weight: bold; }
- .timeUp { font-size: 1.4em; /* smaller text */
-  color: red;
-  font-weight: bold;
-}
+  .timeUp { font-size: 1.4em; color: red; font-weight: bold; }
+
   .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
 
   #howToPlayModal {
@@ -158,7 +154,6 @@
     cursor: pointer;
   }
   .howto-actions button:hover { background: #eee; }
-
   @media (max-width: 480px) {
     #howToPlayContent { margin-top: 14%; }
     #howToPlayContent p { font-size: 18px; line-height: 1.6; }
@@ -225,13 +220,10 @@
 
 <!-- Sounds -->
 <audio id="winSound"    src="applause.mp3"></audio>
-<audio id="bustSound"   src="boom.mp3"></audio>
+<audio id="bustSound"   src="boom.mp3" preload="auto"></audio>
 <audio id="timeUpSound" src="timeup.mp3"></audio>
-
-<!-- add preload so it’s ready instantly -->
 <audio id="flipSound"   src="bubble.mp3" preload="auto"></audio>
 
-  
 <!-- Floating Install button -->
 <button id="installPromptBtn">Install App</button>
 
@@ -280,6 +272,38 @@
     if (!running) { running = true; loop(); }
   };
 })();
+
+/* ---------- Audio helpers + unlock ---------- */
+function playSound(id, { clone = false } = {}) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    if (clone) {
+      const node = el.cloneNode(true);
+      node.volume = el.volume ?? 1;
+      node.addEventListener('ended', () => node.remove());
+      document.body.appendChild(node);
+      node.currentTime = 0;
+      node.play().catch(()=>{});
+    } else {
+      el.currentTime = 0;
+      el.play().catch(()=>{});
+    }
+  } catch(_) {}
+}
+
+// One-time unlock (mobile audio policies)
+document.addEventListener("pointerdown", function unlockOnce(){
+  ["flipSound","winSound","bustSound","timeUpSound"].forEach(id => {
+    const a = document.getElementById(id);
+    if (!a) return;
+    try {
+      a.muted = true;
+      a.play().then(()=>{ a.pause(); a.currentTime = 0; a.muted = false; });
+    } catch(_) {}
+  });
+  document.removeEventListener("pointerdown", unlockOnce);
+}, { once:true });
 
 /* ---------- Game logic ---------- */
 let cards = [], revealed = [], gameOver = false, requiredPosition = null, firstMoveMade = false;
@@ -334,6 +358,7 @@ function startGame() {
   document.getElementById("status").textContent = "Pick any card to start.";
   const btn = document.getElementById("gameButton");
   btn.textContent = "Restart";
+  btn.onclick = startGame;
 }
 
 function handleTurn(index, cardElement, backElement) {
@@ -347,20 +372,30 @@ function handleTurn(index, cardElement, backElement) {
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
   if (revealed[index]) return;
 
+  // Reveal the clicked card first
   revealed[index] = true;
   cardElement.classList.add("flipped");
   backElement.textContent = cards[index];
-  requiredPosition = cards[index];
 
-  if (revealed[requiredPosition - 1] && !gameOver) {
-    bust(requiredPosition - 1);
+  // Work out the next required position from this card's value
+  const nextPos = cards[index];      // 1..7
+  requiredPosition = nextPos;
+
+  // If NEXT required card is already revealed => BUST the CURRENTLY CLICKED card
+  if (revealed[nextPos - 1]) {
+    bust(index);                      // <-- IMPORTANT: bust the clicked card
+    return;
   }
 
+  // Valid flip → play flip sound
+  playSound("flipSound");
+
+  // Win if all revealed
   if (revealed.every(r => r)) handleWin();
 }
 
 function handleWin() {
-  document.getElementById("winSound").play();
+  playSound("winSound");
   winCount++;
   document.getElementById("winCount").textContent = winCount;
   document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
@@ -379,13 +414,24 @@ function handleWin() {
   gameOver = true;
 }
 
-function bust(index) {
-  playSound("bustSound", { clone: true }); // <-- always fires, even after flip
+function bust(clickedIndex) {
+  // Always fire even right after another sound
+  playSound("bustSound", { clone: true });
+
   loseCount++;
   document.getElementById("loseCount").textContent = loseCount;
-  const bustedCard = document.querySelectorAll(".card")[index];
-  bustedCard.classList.add("flipped", "bustFlash");
-  bustedCard.querySelector(".card-back").textContent = cards[index];
+
+  const clickedCard = document.querySelectorAll(".card")[clickedIndex];
+
+  // Ensure it's face-up and flashing red
+  clickedCard.classList.add("flipped", "bustFlash");
+
+  // Make sure the number is visible on its back
+  const back = clickedCard.querySelector(".card-back");
+  if (back && back.textContent.trim() === "") {
+    back.textContent = cards[clickedIndex];
+  }
+
   document.getElementById("status").textContent = "❌ Try again";
   gameOver = true;
 }
@@ -399,7 +445,7 @@ function startTimer() {
     timeLeft--;
     display.textContent = formatTime(timeLeft);
     if (timeLeft <= 0) {
-      document.getElementById("timeUpSound").play();
+      playSound("timeUpSound");
       clearInterval(timerInterval);
       timerDone = true; gameOver = true;
       document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
@@ -419,25 +465,23 @@ let deferredPrompt = null;
 const installBtn = document.getElementById('installPromptBtn');
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // Prevent the mini-infobar and store the event for later
   e.preventDefault();
   deferredPrompt = e;
-  // Show our button
-  installBtn.style.display = 'block';
+  if (installBtn) installBtn.style.display = 'block';
 });
 
-installBtn.addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  // Hide the button regardless of choice; you can re-show later if dismissed
-  installBtn.style.display = 'none';
-  deferredPrompt = null;
-});
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    installBtn.style.display = 'none';
+    deferredPrompt = null;
+  });
+}
 
-// Optional: hide the button once installed
 window.addEventListener('appinstalled', () => {
-  installBtn.style.display = 'none';
+  if (installBtn) installBtn.style.display = 'none';
   deferredPrompt = null;
 });
 
@@ -453,15 +497,3 @@ startGame();
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
