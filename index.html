@@ -292,7 +292,6 @@ function playSound(id, { clone = false } = {}) {
   } catch(_) {}
 }
 
-// One-time unlock (mobile audio policies)
 document.addEventListener("pointerdown", function unlockOnce(){
   ["flipSound","winSound","bustSound","timeUpSound"].forEach(id => {
     const a = document.getElementById(id);
@@ -372,26 +371,29 @@ function handleTurn(index, cardElement, backElement) {
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
   if (revealed[index]) return;
 
-  // Reveal the clicked card first
+  // Reveal the clicked card
   revealed[index] = true;
   cardElement.classList.add("flipped");
   backElement.textContent = cards[index];
 
-  // Work out the next required position from this card's value
+  // ✅ WIN check FIRST (if that was the last hidden card)
+  if (revealed.every(Boolean)) {
+    handleWin();
+    return;
+  }
+
+  // Determine the next required position from this card's value
   const nextPos = cards[index];      // 1..7
   requiredPosition = nextPos;
 
-  // If NEXT required card is already revealed => BUST the CURRENTLY CLICKED card
+  // ❌ BUST only if there are still hidden cards AND the next required is already revealed
   if (revealed[nextPos - 1]) {
-    bust(index);                      // <-- IMPORTANT: bust the clicked card
+    bust(index);                      // bust the card you just clicked
     return;
   }
 
   // Valid flip → play flip sound
   playSound("flipSound");
-
-  // Win if all revealed
-  if (revealed.every(r => r)) handleWin();
 }
 
 function handleWin() {
@@ -415,7 +417,6 @@ function handleWin() {
 }
 
 function bust(clickedIndex) {
-  // Always fire even right after another sound
   playSound("bustSound", { clone: true });
 
   loseCount++;
@@ -423,10 +424,8 @@ function bust(clickedIndex) {
 
   const clickedCard = document.querySelectorAll(".card")[clickedIndex];
 
-  // Ensure it's face-up and flashing red
   clickedCard.classList.add("flipped", "bustFlash");
 
-  // Make sure the number is visible on its back
   const back = clickedCard.querySelector(".card-back");
   if (back && back.textContent.trim() === "") {
     back.textContent = cards[clickedIndex];
