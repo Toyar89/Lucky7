@@ -168,21 +168,28 @@ function startGame() {
 }
 
 /* ===== Turn Logic ===== */
-function handleTurn(index, cardElement, backElement) {
-  if (gameOver || timerDone) return;
-
-  if (!firstMoveMade) {
-    document.getElementById("status").textContent = "";
-    firstMoveMade = true;
-    if (!timerStarted) { startTimer(); timerStarted = true; }
-  }
-
-  if (requiredPosition !== null && index !== requiredPosition - 1) return;
-  if (revealed[index]) return;
-
-  revealed[index] = true;
+revealed[index] = true;
 cardElement.classList.add("flipped");
 backElement.textContent = cards[index];
+
+// determine the next required position from this card's value
+const nextPos = cards[index];      // 1..7
+requiredPosition = nextPos;
+
+// if the *next required* card is already face-up → BUST the CURRENT card
+if (revealed[nextPos - 1]) {
+  bust(index);                     // <-- bust the card you just clicked
+  return;                          // stop here
+}
+
+// otherwise it's a valid flip → play flip sound and continue
+playSound("flipSound");
+
+// win if all are revealed
+if (revealed.every(Boolean)) {
+  handleWin();
+}
+
 
 // play flip sound
 const flipAudio = document.getElementById("flipSound");
@@ -298,6 +305,7 @@ window.addEventListener('load', () => {
     setTimeout(fitToViewport, 0);
   }, SPLASH_MS);
 });
+
 
 
 
