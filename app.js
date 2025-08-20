@@ -221,13 +221,28 @@ function handleWin() {
   gameOver = true;
 }
 
-function bust(index) {
-  document.getElementById("bustSound").play();
+function bust(clickedIndex) {
+  // always fire even if another sound played just before
+  playSound("bustSound", { clone: true });
+
   loseCount++;
   document.getElementById("loseCount").textContent = loseCount;
-  const bustedCard = document.querySelectorAll(".card")[index];
-  bustedCard.classList.add("flipped", "bustFlash");
-  bustedCard.querySelector(".card-back").textContent = cards[index];
+
+  const card = document.querySelectorAll(".card")[clickedIndex];
+
+  // make sure it’s face-up
+  card.classList.add("flipped");
+
+  // trigger red flash on the back face
+  card.classList.add("bustFlash");
+
+  // ensure the number shows on the back
+  const back = card.querySelector(".card-back");
+  if (back && back.textContent.trim() === "") {
+    const idx = Number(card.dataset.index);
+    back.textContent = cards[idx];
+  }
+
   document.getElementById("status").textContent = "❌ Try again";
   gameOver = true;
 }
@@ -283,5 +298,6 @@ window.addEventListener('load', () => {
     setTimeout(fitToViewport, 0);
   }, SPLASH_MS);
 });
+
 
 
