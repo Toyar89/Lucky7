@@ -1,3 +1,4 @@
+/* ===== Sound helper ===== */
 function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -16,7 +17,18 @@ function playSound(id, { clone = false } = {}) {
   } catch(_) {}
 }
 
-
+/* ===== One-time audio unlock (mobile) ===== */
+document.addEventListener("pointerdown", function unlockOnce() {
+  ["flipSound","winSound","bustSound","timeUpSound"].forEach(id => {
+    const a = document.getElementById(id);
+    if (!a) return;
+    try {
+      a.muted = true;
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; });
+    } catch(_) {}
+  });
+  document.removeEventListener("pointerdown", unlockOnce);
+}, { once: true });
 
 /* ===== Service worker registration ===== */
 if ('serviceWorker' in navigator) {
@@ -33,7 +45,6 @@ function fitToViewport() {
   // clear previous scale to measure natural height
   page.style.transform = '';
 
-  // available height = viewport minus body padding (safe-area included)
   const styles = getComputedStyle(document.body);
   const padTop = parseFloat(styles.paddingTop) || 0;
   const padBottom = parseFloat(styles.paddingBottom) || 0;
@@ -167,48 +178,48 @@ function startGame() {
   setTimeout(fitToViewport, 0);
 }
 
-/* ===== Turn Logic ===== */
-revealed[index] = true;
-cardElement.classList.add("flipped");
-backElement.textContent = cards[index];
+/* ===== Turn Logic (WIN first, then BUST) ===== */
+function handleTurn(index, cardElement, backElement) {
+  if (gameOver || timerDone) return;
 
-// determine the next required position from this card's value
-const nextPos = cards[index];      // 1..7
-requiredPosition = nextPos;
-
-// if the *next required* card is already face-up → BUST the CURRENT card
-if (revealed[nextPos - 1]) {
-  bust(index);                     // <-- bust the card you just clicked
-  return;                          // stop here
-}
-
-// otherwise it's a valid flip → play flip sound and continue
-playSound("flipSound");
-
-// win if all are revealed
-if (revealed.every(Boolean)) {
-  handleWin();
-}
-
-
-// play flip sound
-const flipAudio = document.getElementById("flipSound");
-if (flipAudio) {
-  flipAudio.currentTime = 0; // rewind so it can replay quickly
-  flipAudio.play();
-}
-  requiredPosition = cards[index];
-
-  if (revealed[requiredPosition - 1] && !gameOver) {
-    bust(requiredPosition - 1);
+  if (!firstMoveMade) {
+    document.getElementById("status").textContent = "";
+    firstMoveMade = true;
+    if (!timerStarted) { startTimer(); timerStarted = true; }
   }
 
-  if (revealed.every(r => r)) handleWin();
+  // must follow chain; ignore already revealed
+  if (requiredPosition !== null && index !== requiredPosition - 1) return;
+  if (revealed[index]) return;
+
+  // Reveal the clicked card
+  revealed[index] = true;
+  cardElement.classList.add("flipped");
+  backElement.textContent = cards[index];
+
+  // ✅ If that was the last hidden card, you win immediately
+  if (revealed.every(Boolean)) {
+    handleWin();
+    return;
+  }
+
+  // Next required position comes from this card's value
+  const nextPos = cards[index];   // 1..7
+  requiredPosition = nextPos;
+
+  // ❌ Bust only if there are still hidden cards AND the next required is already face-up
+  if (revealed[nextPos - 1]) {
+    bust(index);                   // bust the card you just clicked
+    return;
+  }
+
+  // Valid flip → play flip sound
+  playSound("flipSound");
 }
 
 /* ===== Win / Bust ===== */
 function handleWin() {
-  document.getElementById("winSound").play();
+  playSound("winSound");
   winCount++;
   document.getElementById("winCount").textContent = winCount;
   document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
@@ -222,14 +233,14 @@ function handleWin() {
     c.querySelector(".card-back").textContent = cards[idx];
   });
 
-  launchConfetti(5000);
+  if (typeof window.launchConfetti === "function") launchConfetti(5000);
   setTimeout(() => allCards.forEach(c => c.classList.remove("winFlash")), 5000);
 
   gameOver = true;
 }
 
 function bust(clickedIndex) {
-  // always fire even if another sound played just before
+  // Always fire even if another sound just played
   playSound("bustSound", { clone: true });
 
   loseCount++;
@@ -237,17 +248,13 @@ function bust(clickedIndex) {
 
   const card = document.querySelectorAll(".card")[clickedIndex];
 
-  // make sure it’s face-up
-  card.classList.add("flipped");
+  // Ensure it’s face-up and flashing red
+  card.classList.add("flipped", "bustFlash");
 
-  // trigger red flash on the back face
-  card.classList.add("bustFlash");
-
-  // ensure the number shows on the back
+  // Ensure the number shows on the back
   const back = card.querySelector(".card-back");
   if (back && back.textContent.trim() === "") {
-    const idx = Number(card.dataset.index);
-    back.textContent = cards[idx];
+    back.textContent = cards[clickedIndex];
   }
 
   document.getElementById("status").textContent = "❌ Try again";
@@ -271,7 +278,7 @@ function startTimer() {
     timeLeft--;
     display.textContent = formatTime(timeLeft);
     if (timeLeft <= 0) {
-      document.getElementById("timeUpSound").play();
+      playSound("timeUpSound");
       clearInterval(timerInterval);
       timerDone = true; gameOver = true;
       document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
@@ -290,14 +297,14 @@ function formatTime(s) {
 window.addEventListener('load', () => {
   const SPLASH_MS = 4000;
   setTimeout(() => {
-    // 1) Show the game immediately
+    // 1) Show the game immediately (if you have a #page wrapper)
     const page = document.getElementById('page');
-    page.style.display = 'inline-block';
+    if (page) page.style.display = 'inline-block';
 
     // 2) Build the board right away
     startGame();
 
-    // 3) Remove the splash instantly (no fade delay)
+    // 3) Remove the splash instantly (if present)
     const splash = document.getElementById('splash-overlay');
     if (splash) splash.remove();
 
@@ -305,7 +312,3 @@ window.addEventListener('load', () => {
     setTimeout(fitToViewport, 0);
   }, SPLASH_MS);
 });
-
-
-
-
