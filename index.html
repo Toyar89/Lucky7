@@ -113,8 +113,18 @@
   @keyframes winCardFlash { 0%, 100% { background-color: gold; } 50% { background-color: white; } }
   .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
 
-  @keyframes bustBackgroundFlash { 0%, 100% { background-color: rgba(255,0,0,0.3); } 50% { background-color: rgba(255,0,0,0.9); } }
-  .bustFlash .card-back { animation: bustBackgroundFlash 0.6s infinite; color: white; }
+  @keyframes bustBackgroundFlash {
+  0%   { background-color: rgba(255,0,0,0.3); }
+  50%  { background-color: rgba(255,0,0,0.9); }
+  100% { background-color: rgba(255,0,0,0.3); }
+}
+
+/* Bust = animate the back face and keep number readable */
+.card.bustFlash .card-back {
+  animation: bustBackgroundFlash 0.6s infinite;
+  color: #fff;
+}
+
 
   #status { margin-top: 15px; font-size: clamp(16px, 2.4vw, 20px); font-weight: bold; }
  .timeUp { font-size: 1.4em; /* smaller text */
@@ -443,6 +453,7 @@ startGame();
 </script>
 </body>
 </html>
+
 
 
 
