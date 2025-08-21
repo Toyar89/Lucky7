@@ -130,7 +130,6 @@ let cards = [];
 let revealed = [];
 let gameOver = false;
 let requiredPosition = null;
-let firstMoveMade = false;
 
 let winCount = 0;
 let loseCount = 0;
@@ -144,7 +143,6 @@ function startGame() {
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
-  firstMoveMade = false;
 
   const container = document.getElementById("cardContainer");
   container.innerHTML = "";
@@ -189,40 +187,47 @@ function startGame() {
 }
 
 /* =======================
-   Turn Logic
+   Turn Logic (first click flips immediately)
    ======================= */
 
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  if (!firstMoveMade) {
-    document.getElementById("status").textContent = "";
-    firstMoveMade = true;
+  // Clear the initial prompt but continue to flip on this same click
+  const statusEl = document.getElementById("status");
+  if (statusEl && statusEl.textContent) {
+    statusEl.textContent = "";
   }
 
+  // Must follow the chain if requiredPosition is set
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
+
+  // Ignore already-revealed cards
   if (revealed[index]) return;
 
-  // Reveal the clicked card first
+  // Reveal this card now
   revealed[index] = true;
   cardElement.classList.add("flipped");
   backElement.textContent = cards[index];
 
-  // Work out the next required position from this card's value
-  const nextPos = cards[index]; // 1..7
+  // ✅ WIN check FIRST (prevents last-card false bust)
+  if (revealed.every(Boolean)) {
+    handleWin();
+    return;
+  }
+
+  // Next required position is the value on this card (1..7)
+  const nextPos = cards[index];
   requiredPosition = nextPos;
 
-  // If NEXT required card is already revealed => BUST the CURRENTLY CLICKED card
+  // ❌ Bust if the next required card is already face-up
   if (revealed[nextPos - 1]) {
-    bust(index);
+    bust(index); // bust the CURRENTLY CLICKED card
     return;
   }
 
   // Valid flip → play flip sound
   playSound("flipSound");
-
-  // Win if all revealed
-  if (revealed.every((r) => r)) handleWin();
 }
 
 /* =======================
@@ -260,7 +265,7 @@ function bust(clickedIndex) {
   // Ensure it's face-up and flashing red
   clickedCard.classList.add("flipped", "bustFlash");
 
-  // Make sure the number is visible on its back
+  // Ensure the number shows on the back
   const back = clickedCard.querySelector(".card-back");
   if (back && back.textContent.trim() === "") {
     back.textContent = cards[clickedIndex];
@@ -334,7 +339,7 @@ if ("serviceWorker" in navigator) {
 
 startGame();
 
-// Expose for inline HTML buttons (if needed)
+// Expose for inline HTML buttons
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
