@@ -17,6 +17,13 @@
 <style>
   :root { --bg:#17173A; --fg:#ffffff; --card:#ffffff; --accent:#ffffff; }
 
+  /* kill 300ms tap delay / ghost clicks on mobile */
+html, body, .cards, .card, .card-inner, .card-face {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+
   body {
     font-family: Arial, sans-serif;
     background: var(--bg);
@@ -195,3 +202,4 @@
 <script src="app.js" defer></script>
 </body>
 </html>
+
