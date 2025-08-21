@@ -1,4 +1,7 @@
-/* ===== Sound helper ===== */
+/* =======================
+   Audio helpers + unlock
+   ======================= */
+
 function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -9,124 +12,134 @@ function playSound(id, { clone = false } = {}) {
       node.addEventListener('ended', () => node.remove());
       document.body.appendChild(node);
       node.currentTime = 0;
-      node.play().catch(()=>{});
+      node.play().catch(() => {});
     } else {
       el.currentTime = 0;
-      el.play().catch(()=>{});
+      el.play().catch(() => {});
     }
-  } catch(_) {}
+  } catch (_) {}
 }
 
-/* ===== One-time audio unlock (mobile) ===== */
-document.addEventListener("pointerdown", function unlockOnce() {
-  ["flipSound","winSound","bustSound","timeUpSound"].forEach(id => {
-    const a = document.getElementById(id);
-    if (!a) return;
-    try {
-      a.muted = true;
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; });
-    } catch(_) {}
-  });
-  document.removeEventListener("pointerdown", unlockOnce);
-}, { once: true });
+// One-time unlock for mobile audio policies
+document.addEventListener(
+  "pointerdown",
+  function unlockOnce() {
+    ["flipSound", "winSound", "bustSound"].forEach((id) => {
+      const a = document.getElementById(id);
+      if (!a) return;
+      try {
+        a.muted = true;
+        a.play().then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;
+        });
+      } catch (_) {}
+    });
+    document.removeEventListener("pointerdown", unlockOnce);
+  },
+  { once: true }
+);
 
-/* ===== Service worker registration ===== */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  });
-}
-
-/* ===== Fit the whole game to the screen if it's too tall ===== */
-function fitToViewport() {
-  const page = document.getElementById('page');
-  if (!page) return;
-
-  // clear previous scale to measure natural height
-  page.style.transform = '';
-
-  const styles = getComputedStyle(document.body);
-  const padTop = parseFloat(styles.paddingTop) || 0;
-  const padBottom = parseFloat(styles.paddingBottom) || 0;
-  const availableH = window.innerHeight - padTop - padBottom;
-
-  const neededH = page.getBoundingClientRect().height;
-
-  if (neededH > availableH) {
-    // don’t go below 0.82 so it stays readable
-    const scale = Math.max(0.82, availableH / neededH);
-    page.style.transform = `scale(${scale})`;
-    page.style.transformOrigin = 'top center';
-  }
-}
-window.addEventListener('resize', fitToViewport);
-window.addEventListener('orientationchange', fitToViewport);
-
-/* ===== Confetti (lightweight) ===== */
+/* =======================
+   Lightweight Confetti
+   ======================= */
 (function () {
-  const canvas = document.createElement('canvas');
-  canvas.className = 'confetti';
+  const canvas = document.createElement("canvas");
+  canvas.className = "confetti";
   document.body.appendChild(canvas);
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   let W, H, particles = [], running = false, endTime = 0;
 
-  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-  window.addEventListener('resize', resize); resize();
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
 
   function spawn(n = 5) {
     for (let i = 0; i < n; i++) {
       particles.push({
-        x: Math.random() * W, y: -10,
-        vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3,
-        size: 4 + Math.random() * 6, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.2,
-        shape: Math.random() < 0.5 ? 'rect' : 'circle'
+        x: Math.random() * W,
+        y: -10,
+        vx: (Math.random() - 0.5) * 2,
+        vy: 2 + Math.random() * 3,
+        size: 4 + Math.random() * 6,
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.2,
+        shape: Math.random() < 0.5 ? "rect" : "circle",
       });
     }
   }
+
   function step() {
     ctx.clearRect(0, 0, W, H);
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
-      if (p.y > H + 20) { p.y = -10; p.x = Math.random() * W; }
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-      ctx.fillStyle = ['#FFD700','#FF3B3B','#4CAF50','#42A5F5','#FF9800'][Math.floor((p.rot*10)%5+5)%5];
-      if (p.shape === 'rect') ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
-      else { ctx.beginPath(); ctx.arc(0,0,p.size/2,0,Math.PI*2); ctx.fill(); }
+    particles.forEach((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      if (p.y > H + 20) {
+        p.y = -10;
+        p.x = Math.random() * W;
+      }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = ["#FFD700", "#FF3B3B", "#4CAF50", "#42A5F5", "#FF9800"][
+        Math.floor(((p.rot * 10) % 5 + 5) % 5)
+      ];
+      if (p.shape === "rect") {
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     });
   }
+
   function loop() {
     if (!running) return;
     step();
-    if (Date.now() < endTime) { spawn(3); requestAnimationFrame(loop); }
-    else { running = false; particles = []; ctx.clearRect(0, 0, W, H); }
+    if (Date.now() < endTime) {
+      spawn(3);
+      requestAnimationFrame(loop);
+    } else {
+      running = false;
+      particles = [];
+      ctx.clearRect(0, 0, W, H);
+    }
   }
+
   window.launchConfetti = function (durationMs = 5000) {
     endTime = Date.now() + durationMs;
-    if (!running) { running = true; loop(); }
+    if (!running) {
+      running = true;
+      loop();
+    }
   };
 })();
 
-/* ===== Game state ===== */
+/* =======================
+   Game State
+   ======================= */
+
 let cards = [];
 let revealed = [];
 let gameOver = false;
 let requiredPosition = null;
 let firstMoveMade = false;
+
 let winCount = 0;
 let loseCount = 0;
-let timerInterval;
-let timerStarted = false;
-let timeLeft = 60;
-let timerDone = false;
 
-/* ===== Build / Start ===== */
+/* =======================
+   Build / Start
+   ======================= */
+
 function startGame() {
-  if (timerDone) {
-    document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
-    return;
-  }
-
   cards = shuffle([1, 2, 3, 4, 5, 6, 7]);
   revealed = Array(7).fill(false);
   gameOver = false;
@@ -173,86 +186,82 @@ function startGame() {
   const btn = document.getElementById("gameButton");
   btn.textContent = "Restart";
   btn.onclick = startGame;
-
-  // Fit to the screen after DOM is ready
-  setTimeout(fitToViewport, 0);
 }
 
-/* ===== Turn Logic (WIN first, then BUST) ===== */
+/* =======================
+   Turn Logic
+   ======================= */
+
 function handleTurn(index, cardElement, backElement) {
-  if (gameOver || timerDone) return;
+  if (gameOver) return;
 
   if (!firstMoveMade) {
     document.getElementById("status").textContent = "";
     firstMoveMade = true;
-    if (!timerStarted) { startTimer(); timerStarted = true; }
   }
 
-  // must follow chain; ignore already revealed
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
   if (revealed[index]) return;
 
-  // Reveal the clicked card
+  // Reveal the clicked card first
   revealed[index] = true;
   cardElement.classList.add("flipped");
   backElement.textContent = cards[index];
 
-  // ✅ If that was the last hidden card, you win immediately
-  if (revealed.every(Boolean)) {
-    handleWin();
-    return;
-  }
-
-  // Next required position comes from this card's value
-  const nextPos = cards[index];   // 1..7
+  // Work out the next required position from this card's value
+  const nextPos = cards[index]; // 1..7
   requiredPosition = nextPos;
 
-  // ❌ Bust only if there are still hidden cards AND the next required is already face-up
+  // If NEXT required card is already revealed => BUST the CURRENTLY CLICKED card
   if (revealed[nextPos - 1]) {
-    bust(index);                   // bust the card you just clicked
+    bust(index);
     return;
   }
 
   // Valid flip → play flip sound
   playSound("flipSound");
+
+  // Win if all revealed
+  if (revealed.every((r) => r)) handleWin();
 }
 
-/* ===== Win / Bust ===== */
+/* =======================
+   Win / Bust
+   ======================= */
+
 function handleWin() {
   playSound("winSound");
   winCount++;
   document.getElementById("winCount").textContent = winCount;
   document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
 
-  // Flip & gold-flash ALL cards; remove any red flash from previous rounds
   const allCards = document.querySelectorAll(".card");
-  allCards.forEach(c => {
+  allCards.forEach((c) => {
     c.classList.remove("bustFlash");
     c.classList.add("flipped", "winFlash");
     const idx = c.dataset.index;
     c.querySelector(".card-back").textContent = cards[idx];
   });
 
-  if (typeof window.launchConfetti === "function") launchConfetti(5000);
-  setTimeout(() => allCards.forEach(c => c.classList.remove("winFlash")), 5000);
+  launchConfetti(5000);
+  setTimeout(() => allCards.forEach((c) => c.classList.remove("winFlash")), 5000);
 
   gameOver = true;
 }
 
 function bust(clickedIndex) {
-  // Always fire even if another sound just played
   playSound("bustSound", { clone: true });
 
   loseCount++;
   document.getElementById("loseCount").textContent = loseCount;
 
-  const card = document.querySelectorAll(".card")[clickedIndex];
+  const clickedCard = document.querySelectorAll(".card")[clickedIndex];
 
-  // Ensure it’s face-up and flashing red
-  card.classList.add("flipped", "bustFlash");
+  // Ensure it's face-up and flashing red
+  clickedCard.classList.add("flipped", "bustFlash");
 
-  // Ensure the number shows on the back
-  const back = card.querySelector(".card-back");
+  // Make sure the number is visible on its back
+  const back = clickedCard.querySelector(".card-back");
   if (back && back.textContent.trim() === "") {
     back.textContent = cards[clickedIndex];
   }
@@ -261,9 +270,12 @@ function bust(clickedIndex) {
   gameOver = true;
 }
 
-/* ===== Helpers ===== */
+/* =======================
+   Helpers
+   ======================= */
+
 function shuffle(arr) {
-  let a = [...arr];
+  const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
@@ -271,44 +283,58 @@ function shuffle(arr) {
   return a;
 }
 
-function startTimer() {
-  const display = document.getElementById("timer");
-  display.textContent = formatTime(timeLeft);
-  timerInterval = setInterval(() => {
-    timeLeft--;
-    display.textContent = formatTime(timeLeft);
-    if (timeLeft <= 0) {
-      playSound("timeUpSound");
-      clearInterval(timerInterval);
-      timerDone = true; gameOver = true;
-      document.getElementById("status").innerHTML = "<span class='timeUp'>⏰ TIME UP</span>";
-      const btn = document.getElementById("gameButton");
-      btn.textContent = "Play"; btn.onclick = () => location.reload();
-    }
-  }, 1000);
+function showHowToPlay() {
+  document.getElementById("howToPlayModal").style.display = "block";
+}
+function closeHowToPlay() {
+  document.getElementById("howToPlayModal").style.display = "none";
 }
 
-function formatTime(s) {
-  const m = Math.floor(s / 60), sec = s % 60;
-  return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
-}
+/* =======================
+   PWA install flow
+   ======================= */
 
-/* ===== Splash logic: after 4 seconds, show game instantly ===== */
-window.addEventListener('load', () => {
-  const SPLASH_MS = 4000;
-  setTimeout(() => {
-    // 1) Show the game immediately (if you have a #page wrapper)
-    const page = document.getElementById('page');
-    if (page) page.style.display = 'inline-block';
+let deferredPrompt = null;
+const installBtn = document.getElementById("installPromptBtn");
 
-    // 2) Build the board right away
-    startGame();
-
-    // 3) Remove the splash instantly (if present)
-    const splash = document.getElementById('splash-overlay');
-    if (splash) splash.remove();
-
-    // Ensure final fit after splash removal
-    setTimeout(fitToViewport, 0);
-  }, SPLASH_MS);
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.style.display = "block";
 });
+
+if (installBtn) {
+  installBtn.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    installBtn.style.display = "none";
+    deferredPrompt = null;
+  });
+}
+
+window.addEventListener("appinstalled", () => {
+  if (installBtn) installBtn.style.display = "none";
+  deferredPrompt = null;
+});
+
+/* =======================
+   Service worker
+   ======================= */
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+
+/* =======================
+   Init
+   ======================= */
+
+startGame();
+
+// Expose for inline HTML buttons (if needed)
+window.startGame = startGame;
+window.showHowToPlay = showHowToPlay;
+window.closeHowToPlay = closeHowToPlay;
