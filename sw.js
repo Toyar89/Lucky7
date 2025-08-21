@@ -1,6 +1,6 @@
 // sw.js
 // Bump this any time you change cached assets
-const CACHE_NAME = "lucky7-cache-v30";
+const CACHE_NAME = "lucky7-cache-v31";
 
 const ASSETS = [
   "./",
