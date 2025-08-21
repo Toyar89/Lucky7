@@ -199,6 +199,12 @@ function handleTurn(index, cardElement, backElement) {
     statusEl.textContent = "";
   }
 
+  // If this is the first flip of the round, ensure no stale chain blocks it
+  const isFirstFlip = revealed.every(r => r === false);
+  if (isFirstFlip) {
+    requiredPosition = null;
+  }
+
   // Must follow the chain if requiredPosition is set
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
 
