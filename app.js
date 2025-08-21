@@ -19,7 +19,7 @@ function playSound(id, { clone = false } = {}) {
   } catch (_) {}
 }
 
-// Mobile audio unlock (doesn't block the click)
+// Mobile audio unlock (non-blocking)
 document.addEventListener('pointerdown', function unlockOnce() {
   ['flipSound','winSound','bustSound'].forEach(id => {
     const a = document.getElementById(id);
@@ -135,18 +135,20 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear prompt on first click, but keep processing this same click.
+  // Clear prompt on first click, but keep processing this same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // If this is the *first flip* of the round, force chain to be free.
-  // (prevents any stale requiredPosition from blocking the first flip)
-  if (revealed.every(r => r === false)) {
+  const isFirstFlip = revealed.every(r => r === false);
+
+  // On the first flip, SKIP chain enforcement entirely
+  if (!isFirstFlip) {
+    // Only enforce chain after the first flip
+    if (requiredPosition !== null && index !== requiredPosition - 1) return;
+  } else {
+    // Ensure no stale chain blocks the first flip
     requiredPosition = null;
   }
-
-  // Enforce chain only after the first flip
-  if (requiredPosition !== null && index !== requiredPosition - 1) return;
 
   // Ignore already-revealed cards
   if (revealed[index]) return;
@@ -156,10 +158,10 @@ function handleTurn(index, cardElement, backElement) {
   cardElement.classList.add('flipped');
   backElement.textContent = cards[index];
 
-  // ✅ WIN check first
+  // ✅ If that was the last unrevealed card, win immediately
   if (revealed.every(Boolean)) { handleWin(); return; }
 
-  // Set the next required position (1..7)
+  // Set the next required position (1..7) based on the number shown
   const nextPos = cards[index];
   requiredPosition = nextPos;
 
