@@ -124,7 +124,7 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    card.addEventListener('click', () => handleTurn(i, card, back));
+    card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
   document.getElementById('status').textContent = 'Pick any card to start.';
@@ -283,3 +283,4 @@ startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
+
