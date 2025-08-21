@@ -42,45 +42,33 @@ document.addEventListener('pointerdown', function unlockOnce() {
   const ctx = canvas.getContext('2d');
   let W, H, particles = [], running = false, endTime = 0;
 
-  function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize); resize();
 
-  function spawn(n = 5) {
-    for (let i = 0; i < n; i++) {
+  function spawn(n=5){
+    for (let i=0;i<n;i++){
       particles.push({
-        x: Math.random() * W, y: -10,
-        vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3,
-        size: 4 + Math.random() * 6, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.2,
-        shape: Math.random() < 0.5 ? 'rect' : 'circle'
+        x: Math.random()*W, y: -10,
+        vx: (Math.random()-0.5)*2, vy: 2+Math.random()*3,
+        size: 4+Math.random()*6, rot: Math.random()*Math.PI, vr: (Math.random()-0.5)*0.2,
+        shape: Math.random()<0.5 ? 'rect' : 'circle'
       });
     }
   }
-  function step() {
-    ctx.clearRect(0, 0, W, H);
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
-      if (p.y > H + 20) { p.y = -10; p.x = Math.random() * W; }
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+  function step(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr;
+      if (p.y>H+20){ p.y=-10; p.x=Math.random()*W; }
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
       ctx.fillStyle = ['#FFD700','#FF3B3B','#4CAF50','#42A5F5','#FF9800'][Math.floor((p.rot*10)%5+5)%5];
-      if (p.shape === 'rect') ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+      if (p.shape==='rect') ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
       else { ctx.beginPath(); ctx.arc(0,0,p.size/2,0,Math.PI*2); ctx.fill(); }
       ctx.restore();
     });
   }
-  function loop() {
-    if (!running) return;
-    step();
-    if (Date.now() < endTime) { spawn(3); requestAnimationFrame(loop); }
-    else { running = false; particles = []; ctx.clearRect(0,0,W,H); }
-  }
-  window.launchConfetti = function(durationMs = 5000) {
-    endTime = Date.now() + durationMs;
-    if (!running) { running = true; loop(); }
-  };
+  function loop(){ if(!running) return; step(); if(Date.now()<endTime){ spawn(3); requestAnimationFrame(loop); } else { running=false; particles=[]; ctx.clearRect(0,0,W,H); } }
+  window.launchConfetti = function(d=5000){ endTime=Date.now()+d; if(!running){ running=true; loop(); } };
 })();
 
 /* =======================
@@ -92,6 +80,9 @@ let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
 
+// NEW: guarantees the very first tap flips immediately
+let mustFlipFirstClick = true;
+
 /* =======================
    Build / Start
    ======================= */
@@ -100,6 +91,7 @@ function startGame() {
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
+  mustFlipFirstClick = true; // reset the first-click force
 
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -122,10 +114,8 @@ function startGame() {
     back.className = 'card-face card-back';
     back.textContent = '';
 
-    inner.appendChild(front);
-    inner.appendChild(back);
-    card.appendChild(inner);
-    wrapper.appendChild(card);
+    inner.appendChild(front); inner.appendChild(back);
+    card.appendChild(inner); wrapper.appendChild(card);
 
     const label = document.createElement('div');
     label.className = 'position-label';
@@ -144,7 +134,7 @@ function startGame() {
 }
 
 /* =======================
-   Turn Logic (first click flips)
+   Turn Logic (first click always flips)
    ======================= */
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
@@ -153,31 +143,30 @@ function handleTurn(index, cardElement, backElement) {
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  const isFirstFlip = revealed.every(r => r === false);
+  // FORCE the very first click to flip, then enable chain rules
+  if (mustFlipFirstClick) {
+    mustFlipFirstClick = false;              // consume the first-click privilege
 
-  if (isFirstFlip) {
-    // First click of the round ALWAYS flips the clicked card
-    if (revealed[index]) return;
+    if (revealed[index]) return;             // safety
 
     revealed[index] = true;
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
-    // If somehow all are revealed (edge case), win
+    // Win edge case (shouldn't happen here, but safe)
     if (revealed.every(Boolean)) { handleWin(); return; }
 
-    // Start the chain from the number shown
+    // Start chain from the shown number
     requiredPosition = cards[index];
 
-    // If the next required card is already up, bust THIS card
+    // If next required card is already face-up → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
-    // Valid first flip → sound
     playSound('flipSound');
-    return; // chain enforcement begins on later clicks
+    return; // stop here; from now on chain is enforced
   }
 
-  // From the second flip onward, enforce the chain
+  // From second click onwards, enforce the chain
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
 
   // Ignore already-revealed cards
@@ -244,18 +233,14 @@ function bust(clickedIndex) {
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(Math.random()*(i+1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
 
-function showHowToPlay() {
-  document.getElementById('howToPlayModal').style.display = 'block';
-}
-function closeHowToPlay() {
-  document.getElementById('howToPlayModal').style.display = 'none';
-}
+function showHowToPlay(){ document.getElementById('howToPlayModal').style.display = 'block'; }
+function closeHowToPlay(){ document.getElementById('howToPlayModal').style.display = 'none'; }
 
 /* =======================
    PWA install flow
@@ -268,7 +253,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
   deferredPrompt = e;
   if (installBtn) installBtn.style.display = 'block';
 });
-
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
@@ -278,7 +262,6 @@ if (installBtn) {
     deferredPrompt = null;
   });
 }
-
 window.addEventListener('appinstalled', () => {
   if (installBtn) installBtn.style.display = 'none';
   deferredPrompt = null;
