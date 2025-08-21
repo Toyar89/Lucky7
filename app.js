@@ -19,9 +19,9 @@ function playSound(id, { clone = false } = {}) {
   } catch (_) {}
 }
 
-// Mobile audio unlock (non-blocking)
+// Mobile audio unlock (non-blocking, one-time)
 document.addEventListener('pointerdown', function unlockOnce() {
-  ['flipSound','winSound','bustSound'].forEach(id => {
+  ['flipSound', 'winSound', 'bustSound'].forEach(id => {
     const a = document.getElementById(id);
     if (!a) return;
     try {
@@ -30,7 +30,7 @@ document.addEventListener('pointerdown', function unlockOnce() {
     } catch (_) {}
   });
   document.removeEventListener('pointerdown', unlockOnce);
-}, { once:true });
+}, { once: true });
 
 /* =======================
    Lightweight Confetti
@@ -42,33 +42,45 @@ document.addEventListener('pointerdown', function unlockOnce() {
   const ctx = canvas.getContext('2d');
   let W, H, particles = [], running = false, endTime = 0;
 
-  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-  window.addEventListener('resize', resize); resize();
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
 
-  function spawn(n=5){
-    for (let i=0;i<n;i++){
+  function spawn(n = 5) {
+    for (let i = 0; i < n; i++) {
       particles.push({
-        x: Math.random()*W, y: -10,
-        vx: (Math.random()-0.5)*2, vy: 2+Math.random()*3,
-        size: 4+Math.random()*6, rot: Math.random()*Math.PI, vr: (Math.random()-0.5)*0.2,
-        shape: Math.random()<0.5 ? 'rect' : 'circle'
+        x: Math.random() * W, y: -10,
+        vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3,
+        size: 4 + Math.random() * 6, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.2,
+        shape: Math.random() < 0.5 ? 'rect' : 'circle'
       });
     }
   }
-  function step(){
-    ctx.clearRect(0,0,W,H);
-    particles.forEach(p=>{
-      p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr;
-      if (p.y>H+20){ p.y=-10; p.x=Math.random()*W; }
-      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+  function step() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      if (p.y > H + 20) { p.y = -10; p.x = Math.random() * W; }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
       ctx.fillStyle = ['#FFD700','#FF3B3B','#4CAF50','#42A5F5','#FF9800'][Math.floor((p.rot*10)%5+5)%5];
-      if (p.shape==='rect') ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+      if (p.shape === 'rect') ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
       else { ctx.beginPath(); ctx.arc(0,0,p.size/2,0,Math.PI*2); ctx.fill(); }
       ctx.restore();
     });
   }
-  function loop(){ if(!running) return; step(); if(Date.now()<endTime){ spawn(3); requestAnimationFrame(loop); } else { running=false; particles=[]; ctx.clearRect(0,0,W,H); } }
-  window.launchConfetti = function(d=5000){ endTime=Date.now()+d; if(!running){ running=true; loop(); } };
+  function loop() {
+    if (!running) return;
+    step();
+    if (Date.now() < endTime) { spawn(3); requestAnimationFrame(loop); }
+    else { running = false; particles = []; ctx.clearRect(0,0,W,H); }
+  }
+  window.launchConfetti = function(durationMs = 5000) {
+    endTime = Date.now() + durationMs;
+    if (!running) { running = true; loop(); }
+  };
 })();
 
 /* =======================
@@ -92,7 +104,7 @@ function startGame() {
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
 
-  for (let i=0;i<7;i++){
+  for (let i = 0; i < 7; i++) {
     const wrapper = document.createElement('div');
     wrapper.className = 'card-container';
 
@@ -110,12 +122,14 @@ function startGame() {
     back.className = 'card-face card-back';
     back.textContent = '';
 
-    inner.appendChild(front); inner.appendChild(back);
-    card.appendChild(inner); wrapper.appendChild(card);
+    inner.appendChild(front);
+    inner.appendChild(back);
+    card.appendChild(inner);
+    wrapper.appendChild(card);
 
     const label = document.createElement('div');
     label.className = 'position-label';
-    label.textContent = i+1;
+    label.textContent = i + 1;
     wrapper.appendChild(label);
 
     container.appendChild(wrapper);
@@ -135,40 +149,54 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear prompt on first click, but keep processing this same click
+  // Clear the prompt on click, but keep processing this same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
   const isFirstFlip = revealed.every(r => r === false);
 
-  // On the first flip, SKIP chain enforcement entirely
-  if (!isFirstFlip) {
-    // Only enforce chain after the first flip
-    if (requiredPosition !== null && index !== requiredPosition - 1) return;
-  } else {
-    // Ensure no stale chain blocks the first flip
-    requiredPosition = null;
+  if (isFirstFlip) {
+    // First click of the round ALWAYS flips the clicked card
+    if (revealed[index]) return;
+
+    revealed[index] = true;
+    cardElement.classList.add('flipped');
+    backElement.textContent = cards[index];
+
+    // If somehow all are revealed (edge case), win
+    if (revealed.every(Boolean)) { handleWin(); return; }
+
+    // Start the chain from the number shown
+    requiredPosition = cards[index];
+
+    // If the next required card is already up, bust THIS card
+    if (revealed[requiredPosition - 1]) { bust(index); return; }
+
+    // Valid first flip → sound
+    playSound('flipSound');
+    return; // chain enforcement begins on later clicks
   }
+
+  // From the second flip onward, enforce the chain
+  if (requiredPosition !== null && index !== requiredPosition - 1) return;
 
   // Ignore already-revealed cards
   if (revealed[index]) return;
 
-  // Reveal now
+  // Reveal this card
   revealed[index] = true;
   cardElement.classList.add('flipped');
   backElement.textContent = cards[index];
 
-  // ✅ If that was the last unrevealed card, win immediately
+  // Win if that was the last one
   if (revealed.every(Boolean)) { handleWin(); return; }
 
-  // Set the next required position (1..7) based on the number shown
+  // Set next required position and check bust
   const nextPos = cards[index];
   requiredPosition = nextPos;
 
-  // ❌ Bust if the next required card is already face-up
   if (revealed[nextPos - 1]) { bust(index); return; }
 
-  // Valid flip → play click sound
   playSound('flipSound');
 }
 
@@ -184,7 +212,7 @@ function handleWin() {
   const allCards = document.querySelectorAll('.card');
   allCards.forEach(c => {
     c.classList.remove('bustFlash');
-    c.classList.add('flipped','winFlash');
+    c.classList.add('flipped', 'winFlash');
     const idx = c.dataset.index;
     c.querySelector('.card-back').textContent = cards[idx];
   });
@@ -196,12 +224,12 @@ function handleWin() {
 }
 
 function bust(clickedIndex) {
-  playSound('bustSound', { clone:true });
+  playSound('bustSound', { clone: true });
   loseCount++;
   document.getElementById('loseCount').textContent = loseCount;
 
   const card = document.querySelectorAll('.card')[clickedIndex];
-  card.classList.add('flipped','bustFlash');
+  card.classList.add('flipped', 'bustFlash');
 
   const back = card.querySelector('.card-back');
   if (back && back.textContent.trim() === '') back.textContent = cards[clickedIndex];
@@ -215,15 +243,19 @@ function bust(clickedIndex) {
    ======================= */
 function shuffle(arr) {
   const a = [...arr];
-  for (let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i],a[j]] = [a[j],a[i]];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
 
-function showHowToPlay(){ document.getElementById('howToPlayModal').style.display = 'block'; }
-function closeHowToPlay(){ document.getElementById('howToPlayModal').style.display = 'none'; }
+function showHowToPlay() {
+  document.getElementById('howToPlayModal').style.display = 'block';
+}
+function closeHowToPlay() {
+  document.getElementById('howToPlayModal').style.display = 'none';
+}
 
 /* =======================
    PWA install flow
@@ -236,6 +268,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   deferredPrompt = e;
   if (installBtn) installBtn.style.display = 'block';
 });
+
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
@@ -245,6 +278,7 @@ if (installBtn) {
     deferredPrompt = null;
   });
 }
+
 window.addEventListener('appinstalled', () => {
   if (installBtn) installBtn.style.display = 'none';
   deferredPrompt = null;
@@ -255,7 +289,7 @@ window.addEventListener('appinstalled', () => {
    ======================= */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
 
