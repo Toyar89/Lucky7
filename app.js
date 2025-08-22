@@ -239,8 +239,14 @@ function shuffle(arr) {
   return a;
 }
 
-function showHowToPlay(){ document.getElementById('howToPlayModal').style.display = 'block'; }
-function closeHowToPlay(){ document.getElementById('howToPlayModal').style.display = 'none'; }
+function showHowToPlay(){
+  const m = document.getElementById("howToPlayModal");
+  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+}
+function closeHowToPlay(){
+  const m = document.getElementById("howToPlayModal");
+  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+}
 
 /* =======================
    PWA install flow
@@ -283,4 +289,5 @@ startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
+
 
