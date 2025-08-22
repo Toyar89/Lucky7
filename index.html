@@ -23,6 +23,11 @@ html, body, .cards, .card, .card-inner, .card-face {
   -webkit-tap-highlight-color: transparent;
 }
 
+  /* Force the modal to start hidden; show only when .show is added */
+#howToPlayModal{ display:none !important; }
+#howToPlayModal.show{ display:block !important; }
+
+
 
   body {
     font-family: Arial, sans-serif;
@@ -203,5 +208,6 @@ html, body, .cards, .card, .card-inner, .card-face {
 <script src="app.js" defer></script>
 </body>
 </html>
+
 
 
