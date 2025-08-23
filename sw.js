@@ -1,62 +1,66 @@
-// sw.js
-// Bump this any time you change cached assets
-const CACHE_NAME = "lucky7-cache-v17";
+// sw.js — Lucky7 PWA
+const CACHE_NAME = "lucky7-v18"; // ⬅️ bump on each deploy
 
-const ASSETS = [
+// List everything your app needs offline:
+const URLS_TO_CACHE = [
   "./",
   "./index.html",
-  "./app.js",
   "./manifest.json",
-
-  // Images / icons (adjust if any names differ)
+  "./app.js",
   "./logo.png",
+
+  // Icons
   "./icon-192.png",
   "./icon-512.png",
   "./icon-192-maskable.png",
   "./icon-512-maskable.png",
 
-  // Sounds
-  "./applause.mp3",  // win
-  "./boom.mp3",      // bust
-  "./timeup.mp3",    // timer end
-  "./bubble.mp3"     // flip (or change to ./click.mp3 if that’s what you use)
+  // Sounds (adjust names if yours differ)
+  "./applause.mp3",
+  "./bubble.mp3",
+  "./timeup.mp3",
+  "./rude.mp3"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
   );
-  self.skipWaiting();
+  self.skipWaiting(); // activate new SW immediately
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      )
     )
   );
-  self.clients.claim();
+  self.clients.claim(); // take control of pages
 });
 
-// Cache-first with background refresh
+// Cache-first for app shell files; network fallback for anything else
 self.addEventListener("fetch", (event) => {
   const req = event.request;
 
-  // Only handle same-origin GET requests
-  if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
+  // Only GET requests are cacheable
+  if (req.method !== "GET") {
+    return;
+  }
 
   event.respondWith(
     caches.match(req).then((cached) => {
-      const networkFetch = fetch(req).then((res) => {
-        if (res && res.status === 200) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-        }
-        return res;
-      }).catch(() => cached); // offline -> use cache if present
-
-      // Serve cache immediately if present; otherwise wait for network
-      return cached || networkFetch;
+      if (cached) return cached;
+      return fetch(req).then((resp) => {
+        // Optionally cache new GET requests that succeed
+        const respClone = resp.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          // Ignore non-OK or cross-origin if you prefer
+          if (resp.ok) cache.put(req, respClone);
+        });
+        return resp;
+      }).catch(() => cached); // if offline & not cached, just fail silently
     })
   );
 });
