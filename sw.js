@@ -1,5 +1,5 @@
 // sw.js — Lucky7 PWA
-const CACHE_NAME = "lucky7-v18"; // ⬅️ bump on each deploy
+const CACHE_NAME = "lucky7-v19"; // ⬅️ bump on each deploy
 
 // List everything your app needs offline:
 const URLS_TO_CACHE = [
@@ -20,6 +20,7 @@ const URLS_TO_CACHE = [
   "./bubble.mp3",
   "./timeup.mp3",
   "./rude.mp3"
+  "./wrong.mp3"
 ];
 
 self.addEventListener("install", (event) => {
