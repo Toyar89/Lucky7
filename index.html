@@ -35,17 +35,33 @@
   }
   #splash-overlay.hidden{ opacity:0; pointer-events:none; }
 
-  .splash-logo{
-    width:clamp(160px, 48vw, 360px);
-    height:clamp(160px, 48vw, 360px);
-    border-radius:50%;
-    background:#101035;
-    box-shadow:0 0 0 8px rgba(0,0,0,.15) inset, 0 12px 40px rgba(0,0,0,.35);
-    background-image:url("icon-512.png");
-    background-size:70% auto;
-    background-repeat:no-repeat;
-    background-position:center;
-  }
+  #splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #17173A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity .6s ease;
+}
+#splash-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.splash-logo {
+  width: clamp(160px, 48vw, 360px);
+  height: clamp(160px, 48vw, 360px);
+  border-radius: 50%;
+  background: #101035;
+  box-shadow: 0 0 0 8px rgba(0,0,0,.15) inset, 0 12px 40px rgba(0,0,0,.35);
+  background-image: url("icon-512.png");
+  background-size: 70% auto;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
 
   .logo {
     width: clamp(160px, 30vw, 360px);
@@ -255,4 +271,5 @@
 <script src="app.js"></script>
 </body>
 </html>
+
 
