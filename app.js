@@ -80,7 +80,7 @@ let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
 
-// NEW: guarantees the very first tap flips immediately
+// Guarantees the very first tap flips immediately
 let mustFlipFirstClick = true;
 
 /* =======================
@@ -124,13 +124,17 @@ function startGame() {
 
     container.appendChild(wrapper);
 
+    // Use pointerdown so the first tap is not eaten by unlock/prompt
     card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
-  document.getElementById('status').textContent = 'Pick any card to start.';
+  const statusEl = document.getElementById('status');
+  if (statusEl) statusEl.textContent = 'Pick any card to start.';
   const btn = document.getElementById('gameButton');
-  btn.textContent = 'Restart';
-  btn.onclick = startGame;
+  if (btn) {
+    btn.textContent = 'Restart';
+    btn.onclick = startGame;
+  }
 }
 
 /* =======================
@@ -139,7 +143,7 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear the prompt on click, but keep processing this same click
+  // Clear the prompt on click, but keep processing the same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
@@ -153,7 +157,7 @@ function handleTurn(index, cardElement, backElement) {
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
-    // Win edge case (shouldn't happen here, but safe)
+    // Win edge case
     if (revealed.every(Boolean)) { handleWin(); return; }
 
     // Start chain from the shown number
@@ -195,8 +199,10 @@ function handleTurn(index, cardElement, backElement) {
 function handleWin() {
   playSound('winSound');
   winCount++;
-  document.getElementById('winCount').textContent = winCount;
-  document.getElementById('status').textContent = '🎉 You win! All cards revealed.';
+  const winEl = document.getElementById('winCount');
+  if (winEl) winEl.textContent = String(winCount);
+  const statusEl = document.getElementById('status');
+  if (statusEl) statusEl.textContent = '🎉 You win! All cards revealed.';
 
   const allCards = document.querySelectorAll('.card');
   allCards.forEach(c => {
@@ -215,7 +221,8 @@ function handleWin() {
 function bust(clickedIndex) {
   playSound('bustSound', { clone: true });
   loseCount++;
-  document.getElementById('loseCount').textContent = loseCount;
+  const loseEl = document.getElementById('loseCount');
+  if (loseEl) loseEl.textContent = String(loseCount);
 
   const card = document.querySelectorAll('.card')[clickedIndex];
   card.classList.add('flipped', 'bustFlash');
@@ -223,7 +230,8 @@ function bust(clickedIndex) {
   const back = card.querySelector('.card-back');
   if (back && back.textContent.trim() === '') back.textContent = cards[clickedIndex];
 
-  document.getElementById('status').textContent = '❌ Try again';
+  const statusEl = document.getElementById('status');
+  if (statusEl) statusEl.textContent = '❌ Try again';
   gameOver = true;
 }
 
@@ -283,11 +291,29 @@ if ('serviceWorker' in navigator) {
 }
 
 /* =======================
-   Init
+   Splash control
    ======================= */
-startGame();
+// Preload the icon so there’s no placeholder flicker
+(() => { const img = new Image(); img.src = "icon-512.png"; })();
+
+window.addEventListener('load', () => {
+  const splash = document.getElementById('splash-overlay');
+  if (splash) {
+    const SPLASH_MS = 3000; // <- adjust how long the splash shows (ms)
+    setTimeout(() => {
+      splash.classList.add('hidden');        // fade out
+      setTimeout(() => splash && splash.remove(), 650);  // then remove
+      startGame();                            // build the board AFTER splash
+    }, SPLASH_MS);
+  } else {
+    // Fallback: no splash element present
+    startGame();
+  }
+});
+
+/* =======================
+   Expose helpers (optional)
+   ======================= */
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
-
-
