@@ -26,7 +26,7 @@
     text-align: center;
   }
 
-  /* ========= NEW: Custom splash overlay ========= */
+  /* ========= Splash overlay ========= */
   #splash-overlay{
     position:fixed; inset:0; z-index:9999;
     background:#17173A;
@@ -35,19 +35,17 @@
   }
   #splash-overlay.hidden{ opacity:0; pointer-events:none; }
 
-  /* Circular logo using CSS background (no <img>) */
   .splash-logo{
     width:clamp(160px, 48vw, 360px);
     height:clamp(160px, 48vw, 360px);
     border-radius:50%;
     background:#101035;
     box-shadow:0 0 0 8px rgba(0,0,0,.15) inset, 0 12px 40px rgba(0,0,0,.35);
-    background-image:url("icon-512.png");  /* your existing logo file */
+    background-image:url("icon-512.png");
     background-size:70% auto;
     background-repeat:no-repeat;
     background-position:center;
   }
-  /* ========= END splash styles ========= */
 
   .logo {
     width: clamp(160px, 30vw, 360px);
@@ -150,6 +148,7 @@
 
   .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
 
+  /* Modal */
   #howToPlayModal {
     display: none; position: fixed; z-index: 10000; left: 0; top: 0;
     width: 100%; height: 100%; overflow: auto;
@@ -181,7 +180,7 @@
     #howToPlayContent h2 { font-size: 22px; }
   }
 
-  /* Confetti canvas */
+  /* Confetti canvas placeholder (drawn by JS) */
   canvas.confetti { position: fixed; inset: 0; pointer-events: none; }
 
   /* Floating Install button (only appears when installable) */
@@ -205,11 +204,10 @@
 </head>
 <body>
 
-<!-- ========= NEW: Splash overlay markup ========= -->
+<!-- Splash overlay -->
 <div id="splash-overlay" aria-hidden="true">
   <div class="splash-logo" role="img" aria-label="Lucky 7 logo"></div>
 </div>
-<!-- ========= END splash overlay ========= -->
 
 <img class="logo" src="logo.png?v=3" alt="Lucky 7"/>
 
@@ -229,7 +227,7 @@
 <div class="copyright">© Kev Shirreffs 2025</div>
 
 <!-- Modal -->
-<div id="howToPlayModal">
+<div id="howToPlayModal" aria-hidden="true">
   <div id="howToPlayContent">
     <h2>How to Play</h2>
     <p>🎯 You have 7 facedown cards numbered <strong>1 to 7</strong> on the front.</p>
@@ -247,265 +245,12 @@
 <!-- Sounds -->
 <audio id="winSound"    src="applause.mp3"></audio>
 <audio id="bustSound"   src="boom.mp3" preload="auto"></audio>
-<audio id="timeUpSound" src="timeup.mp3"></audio>
 <audio id="flipSound"   src="bubble.mp3" preload="auto"></audio>
 
-<!-- Floating Install button -->
+<!-- PWA install button -->
 <button id="installPromptBtn">Install App</button>
 
-<script>
-/* ---------- Confetti ---------- */
-(function () {
-  const canvas = document.createElement('canvas');
-  canvas.className = 'confetti';
-  document.body.appendChild(canvas);
-  const ctx = canvas.getContext('2d');
-  let W, H, particles = [], running = false, endTime = 0;
-
-  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-  window.addEventListener('resize', resize); resize();
-
-  function spawn(n = 5) {
-    for (let i = 0; i < n; i++) {
-      particles.push({
-        x: Math.random() * W, y: -10,
-        vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3,
-        size: 4 + Math.random() * 6, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.2,
-        shape: Math.random() < 0.5 ? 'rect' : 'circle'
-      });
-    }
-  }
-  function step() {
-    ctx.clearRect(0, 0, W, H);
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
-      if (p.y > H + 20) { p.y = -10; p.x = Math.random() * W; }
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-      ctx.fillStyle = ['#FFD700','#FF3B3B','#4CAF50','#42A5F5','#FF9800'][Math.floor((p.rot*10)%5+5)%5];
-      if (p.shape === 'rect') ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
-      else { ctx.beginPath(); ctx.arc(0,0,p.size/2,0,Math.PI*2); ctx.fill(); }
-      ctx.restore();
-    });
-  }
-  function loop() {
-    if (!running) return;
-    step();
-    if (Date.now() < endTime) { spawn(3); requestAnimationFrame(loop); }
-    else { running = false; particles = []; ctx.clearRect(0, 0, W, H); }
-  }
-  window.launchConfetti = function (durationMs = 5000) {
-    endTime = Date.now() + durationMs;
-    if (!running) { running = true; loop(); }
-  };
-})();
-
-/* ---------- Audio helpers + unlock ---------- */
-function playSound(id, { clone = false } = {}) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  try {
-    if (clone) {
-      const node = el.cloneNode(true);
-      node.volume = el.volume ?? 1;
-      node.addEventListener('ended', () => node.remove());
-      document.body.appendChild(node);
-      node.currentTime = 0;
-      node.play().catch(()=>{});
-    } else {
-      el.currentTime = 0;
-      el.play().catch(()=>{});
-    }
-  } catch(_) {}
-}
-
-document.addEventListener("pointerdown", function unlockOnce(){
-  ["flipSound","winSound","bustSound","timeUpSound"].forEach(id => {
-    const a = document.getElementById(id);
-    if (!a) return;
-    try {
-      a.muted = true;
-      a.play().then(()=>{ a.pause(); a.currentTime = 0; a.muted = false; });
-    } catch(_) {}
-  });
-  document.removeEventListener("pointerdown", unlockOnce);
-}, { once:true });
-
-/* ---------- Game logic ---------- */
-let cards = [], revealed = [], gameOver = false, requiredPosition = null, firstMoveMade = false;
-let winCount = 0, loseCount = 0;
-
-function startGame() {
-  if (gameOver) { /* if you keep a timer elsewhere, ignore */ }
-
-  cards = shuffle([1,2,3,4,5,6,7]);
-  revealed = Array(7).fill(false);
-  gameOver = false;
-  requiredPosition = null;
-  firstMoveMade = false;
-
-  const container = document.getElementById("cardContainer");
-  container.innerHTML = "";
-
-  for (let i = 0; i < 7; i++) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "card-container";
-
-    const card = document.createElement("div");
-    card.className = "card";
-    card.dataset.index = i;
-
-    const cardInner = document.createElement("div");
-    cardInner.className = "card-inner";
-
-    const front = document.createElement("div");
-    front.className = "card-face card-front";
-
-    const back = document.createElement("div");
-    back.className = "card-face card-back";
-    back.textContent = "";
-
-    cardInner.appendChild(front);
-    cardInner.appendChild(back);
-    card.appendChild(cardInner);
-    wrapper.appendChild(card);
-
-    const label = document.createElement("div");
-    label.className = "position-label";
-    label.textContent = i + 1;
-
-    wrapper.appendChild(label);
-    container.appendChild(wrapper);
-
-    card.addEventListener("click", () => handleTurn(i, card, back));
-  }
-
-  document.getElementById("status").textContent = "Pick any card to start.";
-  const btn = document.getElementById("gameButton");
-  btn.textContent = "Restart";
-  btn.onclick = startGame;
-}
-
-function handleTurn(index, cardElement, backElement) {
-  if (gameOver) return;
-
-  if (!firstMoveMade) {
-    document.getElementById("status").textContent = "";
-    firstMoveMade = true;
-  }
-  if (requiredPosition !== null && index !== requiredPosition - 1) return;
-  if (revealed[index]) return;
-
-  // Reveal the clicked card
-  revealed[index] = true;
-  cardElement.classList.add("flipped");
-  backElement.textContent = cards[index];
-
-  // WIN check first
-  if (revealed.every(Boolean)) { handleWin(); return; }
-
-  // Next required position from card value
-  const nextPos = cards[index];      // 1..7
-  requiredPosition = nextPos;
-
-  // Bust if next required already revealed
-  if (revealed[nextPos - 1]) { bust(index); return; }
-
-  playSound("flipSound");
-}
-
-function handleWin() {
-  playSound("winSound");
-  winCount++;
-  document.getElementById("winCount").textContent = winCount;
-  document.getElementById("status").textContent = "🎉 You win! All cards revealed.";
-
-  const allCards = document.querySelectorAll(".card");
-  allCards.forEach(c => {
-    c.classList.remove("bustFlash");
-    c.classList.add("flipped", "winFlash");
-    const idx = c.dataset.index;
-    c.querySelector(".card-back").textContent = cards[idx];
-  });
-
-  launchConfetti(5000);
-  setTimeout(() => allCards.forEach(c => c.classList.remove("winFlash")), 5000);
-
-  gameOver = true;
-}
-
-function bust(clickedIndex) {
-  playSound("bustSound", { clone: true });
-
-  const clickedCard = document.querySelectorAll(".card")[clickedIndex];
-  clickedCard.classList.add("flipped", "bustFlash");
-
-  const back = clickedCard.querySelector(".card-back");
-  if (back && back.textContent.trim() === "") back.textContent = cards[clickedIndex];
-
-  document.getElementById("status").textContent = "❌ Try again";
-  gameOver = true;
-
-  // Update loss count
-  const loseEl = document.getElementById("loseCount");
-  if (loseEl) loseEl.textContent = String((+loseEl.textContent||0) + 1);
-}
-
-function shuffle(arr) { let a=[...arr]; for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-
-function showHowToPlay(){ document.getElementById("howToPlayModal").style.display = "block"; }
-function closeHowToPlay(){ document.getElementById("howToPlayModal").style.display = "none"; }
-
-/* ---------- PWA install flow ---------- */
-let deferredPrompt = null;
-const installBtn = document.getElementById('installPromptBtn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  if (installBtn) installBtn.style.display = 'block';
-});
-
-if (installBtn) {
-  installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    installBtn.style.display = 'none';
-    deferredPrompt = null;
-  });
-}
-
-window.addEventListener('appinstalled', () => {
-  if (installBtn) installBtn.style.display = 'none';
-  deferredPrompt = null;
-});
-
-/* ---------- Service worker registration ---------- */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  });
-}
-
-/* ========= NEW: Splash control (6s) ========= */
-/* Preload the logo to avoid any placeholder flicker */
-(function(){ const img = new Image(); img.src = "icon-512.png"; })();
-
-window.addEventListener('load', () => {
-  const SPLASH_MS = 6000; // 6 seconds
-  const splash = document.getElementById('splash-overlay');
-  setTimeout(() => {
-    if (splash) splash.classList.add('hidden');
-    setTimeout(() => splash && splash.remove(), 650);
-    // Build the board AFTER splash
-    startGame();
-  }, SPLASH_MS);
-});
-/* ========= END splash control ========= */
-</script>
- <script src="app.js"></script>
-
+<!-- Only this one script include -->
+<script src="app.js"></script>
 </body>
 </html>
-
-
