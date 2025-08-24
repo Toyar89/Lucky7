@@ -1,5 +1,5 @@
 // sw.js — Lucky7 PWA
-const CACHE_NAME = "lucky7-v35"; // ⬅️ bump on each deploy
+const CACHE_NAME = "lucky7-v36"; // ⬅️ bump on each deploy
 
 // List everything your app needs offline:
 const URLS_TO_CACHE = [
