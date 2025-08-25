@@ -7,9 +7,6 @@ function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
   if (!el) return;
 
-  // If audio still locked on mobile, try to unlock quickly
-  if (!audioUnlocked) attemptAudioUnlock();
-
   try {
     if (clone) {
       const node = el.cloneNode(true);
@@ -25,28 +22,48 @@ function playSound(id, { clone = false } = {}) {
   } catch (_) {}
 }
 
-// One-time unlock on first user gesture anywhere
+/** Try to unlock audio on mobile. Returns a Promise that resolves once we tried. */
 function attemptAudioUnlock() {
-  if (audioUnlocked) return;
-  const ids = ['flipSound','winSound','bustSound'];
-  let tries = 0;
-  ids.forEach(id => {
-    const a = document.getElementById(id);
-    if (!a) return;
-    try {
-      a.muted = true;
-      a.play().then(() => {
-        a.pause(); a.currentTime = 0; a.muted = false;
-        tries++;
-        if (tries >= 1) audioUnlocked = true; // once any succeeded, consider unlocked
-      }).catch(()=>{});
-    } catch(_) {}
+  if (audioUnlocked) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const ids = ['flipSound','winSound','bustSound'];
+    let anySucceeded = false;
+    let pending = 0;
+
+    ids.forEach(id => {
+      const a = document.getElementById(id);
+      if (!a) return;
+      pending++;
+      try {
+        a.muted = true;
+        a.play().then(() => {
+          a.pause(); a.currentTime = 0; a.muted = false;
+          anySucceeded = true;
+          if (--pending <= 0) finish();
+        }).catch(() => {
+          a.muted = false;
+          if (--pending <= 0) finish();
+        });
+      } catch(_) {
+        a.muted = false;
+        if (--pending <= 0) finish();
+      }
+    });
+
+    // if no audio elements found, just resolve
+    if (pending === 0) finish();
+
+    function finish() {
+      audioUnlocked = anySucceeded || true; // consider unlocked after a user gesture attempt
+      resolve();
+    }
   });
 }
 
-document.addEventListener('pointerdown', function onFirstPointer() {
+// One-time unlock on first user gesture anywhere
+document.addEventListener('pointerdown', () => {
   attemptAudioUnlock();
-  document.removeEventListener('pointerdown', onFirstPointer);
 }, { once:true });
 
 /* =======================
@@ -96,8 +113,6 @@ let revealed = [];
 let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
-
-// First tap flips immediately
 let mustFlipFirstClick = true;
 
 /* =======================
@@ -141,7 +156,6 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    // pointerdown gives best chance to be the first user gesture on mobile
     card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
@@ -154,15 +168,17 @@ function startGame() {
 /* =======================
    Turn Logic (first click always flips)
    ======================= */
-function handleTurn(index, cardElement, backElement) {
+async function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear message but DO NOT return early (so first tap flips)
+  // Clear message but still handle this same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // Make sure audio is unlocked before trying to play click
-  attemptAudioUnlock();
+  // On first interaction, make sure audio is unlocked before we play the flip
+  if (!audioUnlocked) {
+    await attemptAudioUnlock();
+  }
 
   // First click: flip regardless of chain
   if (mustFlipFirstClick) {
@@ -271,30 +287,29 @@ function closeHowToPlay(){
 let deferredPrompt = null;
 const installBtn = document.getElementById('installPromptBtn');
 
-// Hide if already installed (desktop or Android)
 function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches
       || window.navigator.standalone === true; // iOS
 }
 if (isStandalone() && installBtn) installBtn.style.display = 'none';
 
-// Only Chromium fires this event (not iOS Safari / not older browsers)
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
 
-  // Only show if we’re not already installed
   if (installBtn && !isStandalone()) {
     installBtn.style.display = 'block';
     installBtn.disabled = false;
+    installBtn.textContent = 'Install App';
   }
 });
 
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
-    // If event isn’t available, hide (likely iOS or already dismissed)
     if (!deferredPrompt) {
-      installBtn.style.display = 'none';
+      // Fallback hint (e.g., iOS or throttled)
+      installBtn.textContent = 'Use Chrome menu → Install app';
+      setTimeout(()=>{ installBtn.style.display='none'; }, 4000);
       return;
     }
     installBtn.disabled = true;
@@ -302,7 +317,6 @@ if (installBtn) {
     try {
       await deferredPrompt.userChoice;
     } finally {
-      // After any choice the browser may throttle repeats; hide for now
       deferredPrompt = null;
       installBtn.style.display = 'none';
     }
