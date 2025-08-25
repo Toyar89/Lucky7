@@ -91,7 +91,7 @@ function startGame() {
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
-  mustFlipFirstClick = true; // reset the first-click force
+  mustFlipFirstClick = true;
 
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -124,17 +124,13 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    // Use pointerdown so the first tap is not eaten by unlock/prompt
-    card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
+    card.addEventListener('pointerdown', () => handleTurn(i, card, back), { passive: true });
   }
 
   const statusEl = document.getElementById('status');
   if (statusEl) statusEl.textContent = 'Pick any card to start.';
   const btn = document.getElementById('gameButton');
-  if (btn) {
-    btn.textContent = 'Restart';
-    btn.onclick = startGame;
-  }
+  if (btn) { btn.textContent = 'Restart'; btn.onclick = startGame; }
 }
 
 /* =======================
@@ -143,47 +139,36 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear the prompt on click, but keep processing the same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // FORCE the very first click to flip, then enable chain rules
   if (mustFlipFirstClick) {
-    mustFlipFirstClick = false;              // consume the first-click privilege
-    if (revealed[index]) return;             // safety
+    mustFlipFirstClick = false;
+
+    if (revealed[index]) return;
 
     revealed[index] = true;
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
-    // Win edge case
     if (revealed.every(Boolean)) { handleWin(); return; }
 
-    // Start chain from the shown number
     requiredPosition = cards[index];
-
-    // If next required card is already face-up → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
     playSound('flipSound');
-    return; // stop here; from now on chain is enforced
+    return;
   }
 
-  // From second click onwards, enforce the chain
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
-
-  // Ignore already-revealed cards
   if (revealed[index]) return;
 
-  // Reveal this card
   revealed[index] = true;
   cardElement.classList.add('flipped');
   backElement.textContent = cards[index];
 
-  // Win if that was the last one
   if (revealed.every(Boolean)) { handleWin(); return; }
 
-  // Set next required position and check bust
   const nextPos = cards[index];
   requiredPosition = nextPos;
 
@@ -246,16 +231,13 @@ function shuffle(arr) {
   return a;
 }
 
-/* =======================
-   How to Play modal (use display style)
-   ======================= */
 function showHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.style.display = "block"; m.setAttribute("aria-hidden","false"); }
+  if (m) { m.style.display = 'block'; m.setAttribute("aria-hidden","false"); }
 }
 function closeHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.style.display = "none"; m.setAttribute("aria-hidden","true"); }
+  if (m) { m.style.display = 'none'; m.setAttribute("aria-hidden","true"); }
 }
 
 /* =======================
@@ -293,29 +275,9 @@ if ('serviceWorker' in navigator) {
 }
 
 /* =======================
-   Splash control (3s)
+   Init (starts game immediately)
    ======================= */
-// Preload the icon so there’s no placeholder flicker
-(() => { const img = new Image(); img.src = "icon-512.png"; })();
-
-window.addEventListener('load', () => {
-  const splash = document.getElementById('splash-overlay');
-  if (splash) {
-    const SPLASH_MS = 3000; // 3 seconds
-    setTimeout(() => {
-      splash.classList.add('hidden');                // fade out
-      setTimeout(() => splash && splash.remove(), 650); // then remove
-      startGame();                                   // build the board AFTER splash
-    }, SPLASH_MS);
-  } else {
-    // Fallback if splash element is missing
-    startGame();
-  }
-});
-
-/* =======================
-   Expose helpers (optional)
-   ======================= */
+window.addEventListener('DOMContentLoaded', startGame);
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
