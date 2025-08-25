@@ -19,16 +19,25 @@ function playSound(id, { clone = false } = {}) {
   } catch (_) {}
 }
 
-// Mobile audio unlock (non-blocking, one-time)
-document.addEventListener('pointerdown', function unlockOnce() {
+// Prime/unlock audio once on first user interaction
+let audioPrimed = false;
+function primeSounds() {
   ['flipSound', 'winSound', 'bustSound'].forEach(id => {
     const a = document.getElementById(id);
     if (!a) return;
     try {
       a.muted = true;
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; });
+      a.play().then(() => {
+        a.pause();
+        a.currentTime = 0;
+        a.muted = false;
+      }).catch(() => {});
     } catch (_) {}
   });
+  audioPrimed = true;
+}
+document.addEventListener('pointerdown', function unlockOnce () {
+  if (!audioPrimed) primeSounds();
   document.removeEventListener('pointerdown', unlockOnce);
 }, { once: true });
 
@@ -91,7 +100,7 @@ function startGame() {
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
-  mustFlipFirstClick = true;
+  mustFlipFirstClick = true; // reset the first-click force
 
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -124,13 +133,17 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    card.addEventListener('pointerdown', () => handleTurn(i, card, back), { passive: true });
+    // Use pointerdown so the first tap is not eaten by unlock/prompt
+    card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
   const statusEl = document.getElementById('status');
   if (statusEl) statusEl.textContent = 'Pick any card to start.';
   const btn = document.getElementById('gameButton');
-  if (btn) { btn.textContent = 'Restart'; btn.onclick = startGame; }
+  if (btn) {
+    btn.textContent = 'Restart';
+    btn.onclick = startGame;
+  }
 }
 
 /* =======================
@@ -139,42 +152,59 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
+  // Clear the prompt on click, but keep processing the same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  if (mustFlipFirstClick) {
-    mustFlipFirstClick = false;
+  // Small helper so we can defer the first flip sound if audio isn't primed yet
+  const playFlip = () => playSound('flipSound');
 
-    if (revealed[index]) return;
+  // FORCE the very first click to flip, then enable chain rules
+  if (mustFlipFirstClick) {
+    mustFlipFirstClick = false;              // consume the first-click privilege
+
+    if (revealed[index]) return;             // safety
 
     revealed[index] = true;
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
+    // Win edge case
     if (revealed.every(Boolean)) { handleWin(); return; }
 
+    // Start chain from the shown number
     requiredPosition = cards[index];
+
+    // If next required card is already face-up → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
-    playSound('flipSound');
-    return;
+    // First flip sound: defer slightly if not primed yet
+    if (!audioPrimed) setTimeout(playFlip, 80); else playFlip();
+    return; // stop here; from now on chain is enforced
   }
 
+  // From second click onwards, enforce the chain
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
+
+  // Ignore already-revealed cards
   if (revealed[index]) return;
 
+  // Reveal this card
   revealed[index] = true;
   cardElement.classList.add('flipped');
   backElement.textContent = cards[index];
 
+  // Win if that was the last one
   if (revealed.every(Boolean)) { handleWin(); return; }
 
+  // Set next required position and check bust
   const nextPos = cards[index];
   requiredPosition = nextPos;
 
   if (revealed[nextPos - 1]) { bust(index); return; }
 
-  playSound('flipSound');
+  // Subsequent flips: play immediately
+  playFlip();
 }
 
 /* =======================
@@ -233,11 +263,11 @@ function shuffle(arr) {
 
 function showHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.style.display = 'block'; m.setAttribute("aria-hidden","false"); }
+  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
 }
 function closeHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.style.display = 'none'; m.setAttribute("aria-hidden","true"); }
+  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
 }
 
 /* =======================
@@ -275,9 +305,9 @@ if ('serviceWorker' in navigator) {
 }
 
 /* =======================
-   Init (starts game immediately)
+   Init
    ======================= */
-window.addEventListener('DOMContentLoaded', startGame);
+startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
