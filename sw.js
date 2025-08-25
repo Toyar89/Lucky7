@@ -20,7 +20,7 @@ const URLS_TO_CACHE = [
   "./bubble.mp3",
   "./timeup.mp3",
   "./rude.mp3",
-  "./wrong.mp3"
+  "./wrong.mp3",
 ];
 
 self.addEventListener("install", (event) => {
