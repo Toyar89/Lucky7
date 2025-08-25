@@ -7,47 +7,49 @@ function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
   if (!el) return;
 
-  // If we’re not unlocked yet, try to play anyway; if blocked, we’ll unlock.
   try {
+    // If audio policy not unlocked yet, try to play once anyway (mobile may allow if this is the gesture)
+    if (!audioReady) {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+      return;
+    }
+
     if (clone) {
       const node = el.cloneNode(true);
       node.volume = el.volume ?? 1;
       node.addEventListener('ended', () => node.remove());
       document.body.appendChild(node);
       node.currentTime = 0;
-      node.play().then(() => { audioReady = true; }).catch(() => {});
+      node.play().catch(() => {});
     } else {
       el.currentTime = 0;
-      el.play().then(() => { audioReady = true; }).catch(() => {});
+      el.play().catch(() => {});
     }
-  } catch(_) {}
+  } catch (_) {}
 }
 
-/* Mobile audio unlock:
-   - Runs on the VERY FIRST pointer event in the capture phase,
-     before your card handler.
-   - Briefly plays each sound muted to “unlock” playback.
-*/
+// Unlock audio on the very first user interaction (touch/click)
 function unlockAudioOnce() {
-  const ids = ['flipSound','winSound','bustSound'];
+  const ids = ['flipSound', 'winSound', 'bustSound'];
   ids.forEach(id => {
     const a = document.getElementById(id);
     if (!a) return;
     try {
       a.muted = true;
-      a.play()
-        .then(() => {
-          a.pause(); a.currentTime = 0; a.muted = false;
-          audioReady = true;
-        })
-        .catch(() => { /* ignore */ });
-    } catch(_) {}
+      a.play().then(() => {
+        a.pause();
+        a.currentTime = 0;
+        a.muted = false;
+      }).catch(() => {});
+    } catch (_) {}
   });
+  audioReady = true;
 }
-document.addEventListener('pointerdown', function onFirstPointer(e){
-  unlockAudioOnce();
-  document.removeEventListener('pointerdown', onFirstPointer, true);
-}, { capture: true, once: true });
+
+['pointerdown', 'touchstart', 'click'].forEach(ev =>
+  document.addEventListener(ev, unlockAudioOnce, { once: true, passive: true })
+);
 
 /* =======================
    Lightweight Confetti
@@ -96,6 +98,7 @@ let revealed = [];
 let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
+
 // Guarantees the very first tap flips immediately
 let mustFlipFirstClick = true;
 
@@ -140,7 +143,7 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    // pointerdown so we catch the first physical tap quickly
+    // use pointerdown so mobile taps are immediate
     card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
@@ -156,11 +159,11 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear the prompt but continue the same click
+  // Clear the prompt text but keep processing this same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // FIRST click: force flip regardless of chain to guarantee immediate feedback
+  // First click: always allow
   if (mustFlipFirstClick) {
     mustFlipFirstClick = false;
 
@@ -170,34 +173,26 @@ function handleTurn(index, cardElement, backElement) {
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
-    // Try to play flip sound right away (works after our unlock runs)
-    playSound('flipSound');
-
-    // Win edge case (unlikely here)
     if (revealed.every(Boolean)) { handleWin(); return; }
 
-    // Start chain from this value
     requiredPosition = cards[index];
 
-    // If next required is already revealed → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
-    return; // now enforce chain for subsequent clicks
+    playSound('flipSound');
+    return;
   }
 
-  // From second click onwards, enforce the chain
+  // Enforce chain after first click
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
   if (revealed[index]) return;
 
-  // Reveal this card
   revealed[index] = true;
   cardElement.classList.add('flipped');
   backElement.textContent = cards[index];
 
-  // Win if that was the last one
   if (revealed.every(Boolean)) { handleWin(); return; }
 
-  // Set next required and check bust
   const nextPos = cards[index];
   requiredPosition = nextPos;
 
@@ -262,61 +257,29 @@ function shuffle(arr) {
 
 function showHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.style.display = 'block'; m.setAttribute("aria-hidden","false"); }
+  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
 }
 function closeHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.style.display = 'none'; m.setAttribute("aria-hidden","true"); }
+  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
 }
 
 /* =======================
-   PWA install flow (robust)
+   Remove Install App button logic
    ======================= */
-let deferredPrompt = null;
-const installBtn = document.getElementById('installPromptBtn');
-
-// Hide install UI if already running as an installed app
-function inStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches ||
-         window.navigator.standalone === true;
-}
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();           // required to use the custom prompt
-  deferredPrompt = e;
-  if (installBtn && !inStandalone()) {
-    installBtn.style.display = 'block';
-  }
-});
-
-if (installBtn) {
-  installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;            // not eligible yet
-    try {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      // Hide the button regardless (you can re-show later if dismissed)
-      installBtn.style.display = 'none';
-    } catch (_) {
-      // ignore
-    } finally {
-      deferredPrompt = null;
-    }
+// If the button exists in HTML, remove it and any handlers
+(function() {
+  const btn = document.getElementById('installPromptBtn');
+  if (btn) btn.remove();
+  // Also ignore beforeinstallprompt
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    // do nothing (we're not showing the prompt anymore)
   });
-}
-
-window.addEventListener('appinstalled', () => {
-  if (installBtn) installBtn.style.display = 'none';
-  deferredPrompt = null;
-});
-
-// Also hide button if we load in standalone (desktop already installed)
-if (inStandalone() && installBtn) {
-  installBtn.style.display = 'none';
-}
+})();
 
 /* =======================
-   Service worker
+   Service worker (keep)
    ======================= */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
