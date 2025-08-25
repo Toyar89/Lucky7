@@ -19,25 +19,16 @@ function playSound(id, { clone = false } = {}) {
   } catch (_) {}
 }
 
-// Prime/unlock audio once on first user interaction
-let audioPrimed = false;
-function primeSounds() {
+// Mobile audio unlock (non-blocking, one-time)
+document.addEventListener('pointerdown', function unlockOnce() {
   ['flipSound', 'winSound', 'bustSound'].forEach(id => {
     const a = document.getElementById(id);
     if (!a) return;
     try {
       a.muted = true;
-      a.play().then(() => {
-        a.pause();
-        a.currentTime = 0;
-        a.muted = false;
-      }).catch(() => {});
+      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; });
     } catch (_) {}
   });
-  audioPrimed = true;
-}
-document.addEventListener('pointerdown', function unlockOnce () {
-  if (!audioPrimed) primeSounds();
   document.removeEventListener('pointerdown', unlockOnce);
 }, { once: true });
 
@@ -156,13 +147,9 @@ function handleTurn(index, cardElement, backElement) {
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // Small helper so we can defer the first flip sound if audio isn't primed yet
-  const playFlip = () => playSound('flipSound');
-
   // FORCE the very first click to flip, then enable chain rules
   if (mustFlipFirstClick) {
     mustFlipFirstClick = false;              // consume the first-click privilege
-
     if (revealed[index]) return;             // safety
 
     revealed[index] = true;
@@ -178,8 +165,7 @@ function handleTurn(index, cardElement, backElement) {
     // If next required card is already face-up → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
-    // First flip sound: defer slightly if not primed yet
-    if (!audioPrimed) setTimeout(playFlip, 80); else playFlip();
+    playSound('flipSound');
     return; // stop here; from now on chain is enforced
   }
 
@@ -203,8 +189,7 @@ function handleTurn(index, cardElement, backElement) {
 
   if (revealed[nextPos - 1]) { bust(index); return; }
 
-  // Subsequent flips: play immediately
-  playFlip();
+  playSound('flipSound');
 }
 
 /* =======================
@@ -263,33 +248,43 @@ function shuffle(arr) {
 
 function showHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+  if (m) { m.style.display = 'block'; m.setAttribute("aria-hidden","false"); }
 }
 function closeHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+  if (m) { m.style.display = 'none'; m.setAttribute("aria-hidden","true"); }
 }
 
 /* =======================
-   PWA install flow
+   PWA Install Flow (Chrome/Android & Desktop Chrome)
    ======================= */
 let deferredPrompt = null;
 const installBtn = document.getElementById('installPromptBtn');
 
+// Only Chromium browsers fire this (not iOS Safari)
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  if (installBtn) installBtn.style.display = 'block';
+  if (installBtn) {
+    installBtn.style.display = 'block';
+    installBtn.disabled = false;
+  }
 });
+
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      installBtn.style.display = 'none';
+      return;
+    }
+    installBtn.disabled = true;
     deferredPrompt.prompt();
     await deferredPrompt.userChoice;
-    installBtn.style.display = 'none';
     deferredPrompt = null;
+    installBtn.style.display = 'none';
   });
 }
+
 window.addEventListener('appinstalled', () => {
   if (installBtn) installBtn.style.display = 'none';
   deferredPrompt = null;
