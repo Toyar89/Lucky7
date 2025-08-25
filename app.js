@@ -150,7 +150,6 @@ function handleTurn(index, cardElement, backElement) {
   // FORCE the very first click to flip, then enable chain rules
   if (mustFlipFirstClick) {
     mustFlipFirstClick = false;              // consume the first-click privilege
-
     if (revealed[index]) return;             // safety
 
     revealed[index] = true;
@@ -247,13 +246,16 @@ function shuffle(arr) {
   return a;
 }
 
+/* =======================
+   How to Play modal (use display style)
+   ======================= */
 function showHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+  if (m) { m.style.display = "block"; m.setAttribute("aria-hidden","false"); }
 }
 function closeHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+  if (m) { m.style.display = "none"; m.setAttribute("aria-hidden","true"); }
 }
 
 /* =======================
@@ -291,7 +293,7 @@ if ('serviceWorker' in navigator) {
 }
 
 /* =======================
-   Splash control
+   Splash control (3s)
    ======================= */
 // Preload the icon so there’s no placeholder flicker
 (() => { const img = new Image(); img.src = "icon-512.png"; })();
@@ -299,14 +301,14 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('load', () => {
   const splash = document.getElementById('splash-overlay');
   if (splash) {
-    const SPLASH_MS = 3000; // <- adjust how long the splash shows (ms)
+    const SPLASH_MS = 3000; // 3 seconds
     setTimeout(() => {
-      splash.classList.add('hidden');        // fade out
-      setTimeout(() => splash && splash.remove(), 650);  // then remove
-      startGame();                            // build the board AFTER splash
+      splash.classList.add('hidden');                // fade out
+      setTimeout(() => splash && splash.remove(), 650); // then remove
+      startGame();                                   // build the board AFTER splash
     }, SPLASH_MS);
   } else {
-    // Fallback: no splash element present
+    // Fallback if splash element is missing
     startGame();
   }
 });
