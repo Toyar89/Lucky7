@@ -1,9 +1,15 @@
 /* =======================
-   Audio helpers + unlock
+   Audio: helpers + robust mobile unlock
    ======================= */
+let audioUnlocked = false;
+
 function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
   if (!el) return;
+
+  // If audio still locked on mobile, try to unlock quickly
+  if (!audioUnlocked) attemptAudioUnlock();
+
   try {
     if (clone) {
       const node = el.cloneNode(true);
@@ -11,26 +17,37 @@ function playSound(id, { clone = false } = {}) {
       node.addEventListener('ended', () => node.remove());
       document.body.appendChild(node);
       node.currentTime = 0;
-      node.play().catch(() => {});
+      node.play().catch(()=>{});
     } else {
       el.currentTime = 0;
-      el.play().catch(() => {});
+      el.play().catch(()=>{});
     }
   } catch (_) {}
 }
 
-// Mobile audio unlock (non-blocking, one-time)
-document.addEventListener('pointerdown', function unlockOnce() {
-  ['flipSound', 'winSound', 'bustSound'].forEach(id => {
+// One-time unlock on first user gesture anywhere
+function attemptAudioUnlock() {
+  if (audioUnlocked) return;
+  const ids = ['flipSound','winSound','bustSound'];
+  let tries = 0;
+  ids.forEach(id => {
     const a = document.getElementById(id);
     if (!a) return;
     try {
       a.muted = true;
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; });
-    } catch (_) {}
+      a.play().then(() => {
+        a.pause(); a.currentTime = 0; a.muted = false;
+        tries++;
+        if (tries >= 1) audioUnlocked = true; // once any succeeded, consider unlocked
+      }).catch(()=>{});
+    } catch(_) {}
   });
-  document.removeEventListener('pointerdown', unlockOnce);
-}, { once: true });
+}
+
+document.addEventListener('pointerdown', function onFirstPointer() {
+  attemptAudioUnlock();
+  document.removeEventListener('pointerdown', onFirstPointer);
+}, { once:true });
 
 /* =======================
    Lightweight Confetti
@@ -80,7 +97,7 @@ let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
 
-// Guarantees the very first tap flips immediately
+// First tap flips immediately
 let mustFlipFirstClick = true;
 
 /* =======================
@@ -91,7 +108,7 @@ function startGame() {
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
-  mustFlipFirstClick = true; // reset the first-click force
+  mustFlipFirstClick = true;
 
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -124,17 +141,14 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    // Use pointerdown so the first tap is not eaten by unlock/prompt
+    // pointerdown gives best chance to be the first user gesture on mobile
     card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
   const statusEl = document.getElementById('status');
   if (statusEl) statusEl.textContent = 'Pick any card to start.';
   const btn = document.getElementById('gameButton');
-  if (btn) {
-    btn.textContent = 'Restart';
-    btn.onclick = startGame;
-  }
+  if (btn) { btn.textContent = 'Restart'; btn.onclick = startGame; }
 }
 
 /* =======================
@@ -143,47 +157,43 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear the prompt on click, but keep processing the same click
+  // Clear message but DO NOT return early (so first tap flips)
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // FORCE the very first click to flip, then enable chain rules
+  // Make sure audio is unlocked before trying to play click
+  attemptAudioUnlock();
+
+  // First click: flip regardless of chain
   if (mustFlipFirstClick) {
-    mustFlipFirstClick = false;              // consume the first-click privilege
-    if (revealed[index]) return;             // safety
+    mustFlipFirstClick = false;
+
+    if (revealed[index]) return;
 
     revealed[index] = true;
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
-    // Win edge case
     if (revealed.every(Boolean)) { handleWin(); return; }
 
-    // Start chain from the shown number
     requiredPosition = cards[index];
 
-    // If next required card is already face-up → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
     playSound('flipSound');
-    return; // stop here; from now on chain is enforced
+    return;
   }
 
-  // From second click onwards, enforce the chain
+  // From second click onwards → enforce chain
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
-
-  // Ignore already-revealed cards
   if (revealed[index]) return;
 
-  // Reveal this card
   revealed[index] = true;
   cardElement.classList.add('flipped');
   backElement.textContent = cards[index];
 
-  // Win if that was the last one
   if (revealed.every(Boolean)) { handleWin(); return; }
 
-  // Set next required position and check bust
   const nextPos = cards[index];
   requiredPosition = nextPos;
 
@@ -256,16 +266,25 @@ function closeHowToPlay(){
 }
 
 /* =======================
-   PWA Install Flow (Chrome/Android & Desktop Chrome)
+   PWA Install Flow (Chromium only)
    ======================= */
 let deferredPrompt = null;
 const installBtn = document.getElementById('installPromptBtn');
 
-// Only Chromium browsers fire this (not iOS Safari)
+// Hide if already installed (desktop or Android)
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true; // iOS
+}
+if (isStandalone() && installBtn) installBtn.style.display = 'none';
+
+// Only Chromium fires this event (not iOS Safari / not older browsers)
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  if (installBtn) {
+
+  // Only show if we’re not already installed
+  if (installBtn && !isStandalone()) {
     installBtn.style.display = 'block';
     installBtn.disabled = false;
   }
@@ -273,15 +292,20 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
+    // If event isn’t available, hide (likely iOS or already dismissed)
     if (!deferredPrompt) {
       installBtn.style.display = 'none';
       return;
     }
     installBtn.disabled = true;
     deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    installBtn.style.display = 'none';
+    try {
+      await deferredPrompt.userChoice;
+    } finally {
+      // After any choice the browser may throttle repeats; hide for now
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    }
   });
 }
 
