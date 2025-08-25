@@ -3,18 +3,18 @@
    ======================= */
 let audioReady = false;
 
+// Play by id, with optional cloning (so rapid repeats never cut off)
 function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
   if (!el) return;
 
   try {
-    // If audio policy not unlocked yet, try to play once anyway (mobile may allow if this is the gesture)
     if (!audioReady) {
+      // Try anyway (if this call is inside a user gesture it will work)
       el.currentTime = 0;
       el.play().catch(() => {});
       return;
     }
-
     if (clone) {
       const node = el.cloneNode(true);
       node.volume = el.volume ?? 1;
@@ -29,26 +29,39 @@ function playSound(id, { clone = false } = {}) {
   } catch (_) {}
 }
 
-// Unlock audio on the very first user interaction (touch/click)
-function unlockAudioOnce() {
+// One-time unlock. Runs on the very first user gesture and then removes itself.
+// It also resolves immediately so the same gesture can play the first flip.
+function unlockAudioOnce(evt) {
   const ids = ['flipSound', 'winSound', 'bustSound'];
+  let pending = 0;
+
   ids.forEach(id => {
     const a = document.getElementById(id);
     if (!a) return;
     try {
       a.muted = true;
-      a.play().then(() => {
-        a.pause();
-        a.currentTime = 0;
-        a.muted = false;
-      }).catch(() => {});
+      pending++;
+      a.play()
+        .then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;
+        })
+        .catch(() => {})
+        .finally(() => { pending--; });
     } catch (_) {}
   });
+
   audioReady = true;
+  // Important: remove all listeners immediately so the same gesture continues into the flip
+  ['pointerdown','touchstart','click'].forEach(ev =>
+    document.removeEventListener(ev, unlockAudioOnce, { capture: true })
+  );
 }
 
-['pointerdown', 'touchstart', 'click'].forEach(ev =>
-  document.addEventListener(ev, unlockAudioOnce, { once: true, passive: true })
+// Register unlock on capture so it fires BEFORE our card click handler
+['pointerdown','touchstart','click'].forEach(ev =>
+  document.addEventListener(ev, unlockAudioOnce, { capture: true, once: true, passive: true })
 );
 
 /* =======================
@@ -99,7 +112,7 @@ let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
 
-// Guarantees the very first tap flips immediately
+// First tap must always flip immediately
 let mustFlipFirstClick = true;
 
 /* =======================
@@ -143,8 +156,8 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    // use pointerdown so mobile taps are immediate
-    card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
+    // Use 'click' so it definitely runs after unlock in the same gesture
+    card.addEventListener("click", () => handleTurn(i, card, back), { passive: true });
   }
 
   const statusEl = document.getElementById('status');
@@ -163,7 +176,7 @@ function handleTurn(index, cardElement, backElement) {
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // First click: always allow
+  // First click: always allow and play sound *inside the same gesture*
   if (mustFlipFirstClick) {
     mustFlipFirstClick = false;
 
@@ -173,13 +186,17 @@ function handleTurn(index, cardElement, backElement) {
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
+    // Play flip immediately (gesture-synchronous)
+    try {
+      const a = document.getElementById('flipSound');
+      if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
+    } catch(_) {}
+
     if (revealed.every(Boolean)) { handleWin(); return; }
 
     requiredPosition = cards[index];
 
     if (revealed[requiredPosition - 1]) { bust(index); return; }
-
-    playSound('flipSound');
     return;
   }
 
@@ -227,6 +244,7 @@ function handleWin() {
 }
 
 function bust(clickedIndex) {
+  // Clone so it always plays even after another sound
   playSound('bustSound', { clone: true });
   loseCount++;
   const loseEl = document.getElementById('loseCount');
@@ -265,16 +283,17 @@ function closeHowToPlay(){
 }
 
 /* =======================
-   Remove Install App button logic
+   Remove/disable Install App button
    ======================= */
-// If the button exists in HTML, remove it and any handlers
 (function() {
+  // 1) Remove the button if it exists
   const btn = document.getElementById('installPromptBtn');
   if (btn) btn.remove();
-  // Also ignore beforeinstallprompt
+
+  // 2) Suppress the beforeinstallprompt UI entirely
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
-    // do nothing (we're not showing the prompt anymore)
+    // do nothing — we’re not showing our own prompt anymore
   });
 })();
 
