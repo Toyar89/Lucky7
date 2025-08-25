@@ -1,12 +1,32 @@
 /* =======================
-   Audio helpers + unlock
+   Audio helpers + unlock (MP3-only)
    ======================= */
-function playSound(id, { clone = false, fallbackBeep = false } = {}) {
+
+// Warm up audio on the very first user gesture so the first flip can play a sound.
+function warmUpAudioOnce() {
+  ['flipSound', 'winSound', 'bustSound'].forEach(id => {
+    const a = document.getElementById(id);
+    if (!a) return;
+    try {
+      a.muted = true;
+      a.play().then(() => {
+        a.pause();
+        a.currentTime = 0;
+        a.muted = false;
+      }).catch(() => {});
+    } catch {}
+  });
+}
+
+// Do the warm-up once on the first pointer/tap anywhere.
+document.addEventListener('pointerdown', function onFirstPointer() {
+  warmUpAudioOnce();
+  document.removeEventListener('pointerdown', onFirstPointer);
+}, { once: true });
+
+function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
-  if (!el) {
-    if (fallbackBeep) webAudioClick();
-    return;
-  }
+  if (!el) return;
   try {
     if (clone) {
       const node = el.cloneNode(true);
@@ -14,50 +34,12 @@ function playSound(id, { clone = false, fallbackBeep = false } = {}) {
       node.addEventListener('ended', () => node.remove());
       document.body.appendChild(node);
       node.currentTime = 0;
-      node.play().catch(() => { if (fallbackBeep) webAudioClick(); });
+      node.play().catch(() => {});
     } else {
       el.currentTime = 0;
-      el.play().catch(() => { if (fallbackBeep) webAudioClick(); });
+      el.play().catch(() => {});
     }
-  } catch (_) {
-    if (fallbackBeep) webAudioClick();
-  }
-}
-
-/* ---- Mobile audio unlock (one-time) ---- */
-function unlockAllAudio() {
-  ['flipSound', 'winSound', 'bustSound'].forEach(id => {
-    const a = document.getElementById(id);
-    if (!a) return;
-    try {
-      a.muted = true;
-      a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
-               .catch(() => {/* ignore */});
-    } catch (_) {/* ignore */}
-  });
-}
-
-// Do a quick unlock on the first pointer
-document.addEventListener('pointerdown', function unlockOnce() {
-  unlockAllAudio();
-  document.removeEventListener('pointerdown', unlockOnce);
-}, { once: true });
-
-/* ---- WebAudio tiny tick (always allowed on first gesture) ---- */
-let _audioCtx = null;
-function webAudioClick() {
-  try {
-    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = _audioCtx;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'square';
-    o.frequency.value = 1000;
-    g.gain.value = 0.08; // quiet
-    o.connect(g); g.connect(ctx.destination);
-    o.start();
-    setTimeout(() => { o.stop(); o.disconnect(); g.disconnect(); }, 60);
-  } catch (_) { /* no-op */ }
+  } catch {}
 }
 
 /* =======================
@@ -108,9 +90,8 @@ let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
 
-// Guarantees the very first tap flips immediately AND is audible
+// Guarantees the very first tap flips immediately
 let mustFlipFirstClick = true;
-let firstFlipBeepPlayed = false;
 
 /* =======================
    Build / Start
@@ -120,8 +101,7 @@ function startGame() {
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
-  mustFlipFirstClick = true;
-  firstFlipBeepPlayed = false;
+  mustFlipFirstClick = true; // reset the first-click force
 
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -154,7 +134,7 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    // pointerdown so the first tap isn't “eaten”
+    // Use pointerdown so the first tap isn’t “eaten” by other handlers
     card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
@@ -173,19 +153,14 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear the prompt on click, but keep processing this same click
+  // Clear the prompt on click, but keep processing the same click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // FIRST CLICK PATH
+  // FORCE the very first click to flip, then enable chain rules
   if (mustFlipFirstClick) {
-    mustFlipFirstClick = false;
-
-    // Ensure audio is unlocked and give an immediate tiny WebAudio tick
-    unlockAllAudio();
-    if (!firstFlipBeepPlayed) { webAudioClick(); firstFlipBeepPlayed = true; }
-
-    if (revealed[index]) return;
+    mustFlipFirstClick = false;              // consume the first-click privilege
+    if (revealed[index]) return;             // safety
 
     revealed[index] = true;
     cardElement.classList.add('flipped');
@@ -194,21 +169,19 @@ function handleTurn(index, cardElement, backElement) {
     // Win edge case
     if (revealed.every(Boolean)) { handleWin(); return; }
 
-    // Start chain from value
+    // Start chain from the shown number
     requiredPosition = cards[index];
 
-    // Bust if next required already face-up
+    // If next required card is already face-up → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
-    // Try to play the real flip sound immediately after the gesture
-    setTimeout(() => playSound('flipSound'), 0);
-    return;
+    // play the real MP3 immediately on the same gesture
+    playSound('flipSound');
+    return; // from now on chain is enforced
   }
 
   // From second click onwards, enforce the chain
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
-
-  // Ignore already-revealed cards
   if (revealed[index]) return;
 
   // Reveal this card
@@ -236,6 +209,7 @@ function handleWin() {
   winCount++;
   const winEl = document.getElementById('winCount');
   if (winEl) winEl.textContent = String(winCount);
+
   const statusEl = document.getElementById('status');
   if (statusEl) statusEl.textContent = '🎉 You win! All cards revealed.';
 
@@ -284,12 +258,37 @@ function shuffle(arr) {
 
 function showHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); m.style.display = "block"; }
 }
 function closeHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); m.style.display = "none"; }
 }
+
+/* =======================
+   PWA install flow (unchanged)
+   ======================= */
+let deferredPrompt = null;
+const installBtn = document.getElementById('installPromptBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.style.display = 'block';
+});
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    installBtn.style.display = 'none';
+    deferredPrompt = null;
+  });
+}
+window.addEventListener('appinstalled', () => {
+  if (installBtn) installBtn.style.display = 'none';
+  deferredPrompt = null;
+});
 
 /* =======================
    Service worker
