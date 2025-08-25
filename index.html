@@ -26,27 +26,6 @@
     text-align: center;
   }
 
-  /* ========= Splash overlay ========= */
-  #splash-overlay{
-    position:fixed; inset:0; z-index:9999;
-    background:#17173A;
-    display:flex; align-items:center; justify-content:center;
-    opacity:1; transition:opacity .6s ease;
-  }
-  #splash-overlay.hidden{ opacity:0; pointer-events:none; }
-
-  .splash-logo{
-    width:clamp(160px, 48vw, 360px);
-    height:clamp(160px, 48vw, 360px);
-    border-radius:50%;
-    background:#101035;
-    box-shadow:0 0 0 8px rgba(0,0,0,.15) inset, 0 12px 40px rgba(0,0,0,.35);
-    background-image:url("icon-512.png");
-    background-size:70% auto;
-    background-repeat:no-repeat;
-    background-position:center;
-  }
-
   .logo {
     width: clamp(160px, 30vw, 360px);
     height: auto;
@@ -138,23 +117,16 @@
     50%  { background-color: rgba(255,0,0,0.9); }
     100% { background-color: rgba(255,0,0,0.3); }
   }
-  .card.bustFlash .card-back {
-    animation: bustBackgroundFlash 0.6s infinite;
-    color: #fff;
-  }
+  .card.bustFlash .card-back { animation: bustBackgroundFlash 0.6s infinite; color: #fff; }
 
   #status { margin-top: 15px; font-size: clamp(16px, 2.4vw, 20px); font-weight: bold; }
 
   .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
 
-  /* ========= How To Play Modal ========= */
+  /* Modal */
   #howToPlayModal {
-    display: none;
-    position: fixed;
-    z-index: 10000;
-    left: 0; top: 0;
-    width: 100%; height: 100%;
-    overflow: auto;
+    display: none; position: fixed; z-index: 10000; left: 0; top: 0;
+    width: 100%; height: 100%; overflow: auto;
     background-color: rgba(0,0,0,0.75);
     backdrop-filter: blur(2px);
   }
@@ -201,11 +173,6 @@
 </head>
 <body>
 
-<!-- ========= Splash overlay ========= -->
-<div id="splash-overlay" aria-hidden="true">
-  <div class="splash-logo" role="img" aria-label="Lucky 7 logo"></div>
-</div>
-
 <img class="logo" src="logo.png?v=3" alt="Lucky 7"/>
 
 <div class="cards" id="cardContainer"></div>
@@ -223,7 +190,7 @@
 
 <div class="copyright">© Kev Shirreffs 2025</div>
 
-<!-- ========= Modal ========= -->
+<!-- Modal -->
 <div id="howToPlayModal" aria-hidden="true">
   <div id="howToPlayContent">
     <h2>How to Play</h2>
