@@ -1,9 +1,12 @@
 /* =======================
-   Audio helpers + unlock (MP3-only)
+   Audio helpers + unlock (MP3 only)
    ======================= */
 
-// Warm up audio on the very first user gesture so the first flip can play a sound.
+let audioWarmed = false;
+
 function warmUpAudioOnce() {
+  if (audioWarmed) return;
+  audioWarmed = true;
   ['flipSound', 'winSound', 'bustSound'].forEach(id => {
     const a = document.getElementById(id);
     if (!a) return;
@@ -14,15 +17,16 @@ function warmUpAudioOnce() {
         a.currentTime = 0;
         a.muted = false;
       }).catch(() => {});
-    } catch {}
+    } catch (_) {}
   });
 }
 
-// Do the warm-up once on the first pointer/tap anywhere.
+// Run warm-up on the FIRST pointer event *in the capture phase*
+// so it fires before any card handlers.
 document.addEventListener('pointerdown', function onFirstPointer() {
   warmUpAudioOnce();
-  document.removeEventListener('pointerdown', onFirstPointer);
-}, { once: true });
+  document.removeEventListener('pointerdown', onFirstPointer, true);
+}, { once: true, capture: true });
 
 function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
@@ -39,7 +43,7 @@ function playSound(id, { clone = false } = {}) {
       el.currentTime = 0;
       el.play().catch(() => {});
     }
-  } catch {}
+  } catch (_) {}
 }
 
 /* =======================
@@ -101,7 +105,7 @@ function startGame() {
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
-  mustFlipFirstClick = true; // reset the first-click force
+  mustFlipFirstClick = true; // reset on new game
 
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
@@ -134,7 +138,7 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    // Use pointerdown so the first tap isn’t “eaten” by other handlers
+    // Use pointerdown so the first tap isn't lost
     card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
@@ -153,9 +157,12 @@ function startGame() {
 function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  // Clear the prompt on click, but keep processing the same click
+  // Clear the prompt on click, but keep processing this click
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
+
+  // Make absolutely sure audio is warmed before the first flip sound
+  if (!audioWarmed) warmUpAudioOnce();
 
   // FORCE the very first click to flip, then enable chain rules
   if (mustFlipFirstClick) {
@@ -166,7 +173,7 @@ function handleTurn(index, cardElement, backElement) {
     cardElement.classList.add('flipped');
     backElement.textContent = cards[index];
 
-    // Win edge case
+    // Win edge case (unlikely here)
     if (revealed.every(Boolean)) { handleWin(); return; }
 
     // Start chain from the shown number
@@ -175,8 +182,8 @@ function handleTurn(index, cardElement, backElement) {
     // If next required card is already face-up → bust this clicked card
     if (revealed[requiredPosition - 1]) { bust(index); return; }
 
-    // play the real MP3 immediately on the same gesture
-    playSound('flipSound');
+    // Play the flip sound now (clone avoids mobile throttling)
+    playSound('flipSound', { clone: true });
     return; // from now on chain is enforced
   }
 
@@ -198,14 +205,14 @@ function handleTurn(index, cardElement, backElement) {
 
   if (revealed[nextPos - 1]) { bust(index); return; }
 
-  playSound('flipSound');
+  playSound('flipSound', { clone: true });
 }
 
 /* =======================
    Win / Bust
    ======================= */
 function handleWin() {
-  playSound('winSound');
+  playSound('winSound', { clone: true });
   winCount++;
   const winEl = document.getElementById('winCount');
   if (winEl) winEl.textContent = String(winCount);
@@ -266,7 +273,7 @@ function closeHowToPlay(){
 }
 
 /* =======================
-   PWA install flow (unchanged)
+   (Optional) PWA install flow — leave as-is or remove if unwanted
    ======================= */
 let deferredPrompt = null;
 const installBtn = document.getElementById('installPromptBtn');
