@@ -232,7 +232,8 @@ window.addEventListener('appinstalled', () => {
    ======================= */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('/Lucky7/sw.js')
+.catch(() => {});
   });
 }
 
@@ -243,3 +244,4 @@ startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
+
