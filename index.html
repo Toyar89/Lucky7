@@ -1,216 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>LUCKY 7</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LUCKY 7</title>
 
-  <!-- PWA manifest (kept) -->
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#17173A" />
+<!-- PWA essentials -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#17173A" />
 
-  <!-- iOS install support -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <link rel="apple-touch-icon" href="icon-512.png">
+<!-- iOS icon (harmless on other platforms) -->
+<link rel="apple-touch-icon" href="icon-512.png">
 
-  <style>
-    :root { --bg:#17173A; --fg:#ffffff; --card:#ffffff; --accent:#ffffff; }
+<style>
+  :root { --bg:#17173A; --fg:#ffffff; --card:#ffffff; --accent:#ffffff; }
 
-    body {
-      font-family: Arial, sans-serif;
-      background: var(--bg);
-      color: var(--fg);
-      margin: 0;
-      padding: 20px;
-      text-align: center;
-    }
+  body {
+    font-family: Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+  }
 
-    .logo {
-      width: clamp(160px, 30vw, 360px);
-      height: auto;
-      display: block;
-      margin: 0 auto 18px;
-    }
+  .logo {
+    width: clamp(160px, 30vw, 360px);
+    height: auto;
+    display: block;
+    margin: 0 auto 18px;
+  }
 
-    /* Cards */
-    .cards {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin: 20px 0;
-    }
-    .card-container { perspective: 1000px; }
-    .card {
-      cursor: pointer;
-    }
-    .card-inner {
-      width: clamp(90px, 12vw, 120px);
-      height: clamp(150px, 21vw, 200px);
-      position: relative;
-      transform-style: preserve-3d;
-      transition: transform 0.6s;
-      cursor: pointer;
-    }
-    .card.flipped .card-inner { transform: rotateY(180deg); cursor: default; }
-    .card-face {
-      position: absolute; width: 100%; height: 100%;
-      border-radius: 12px; backface-visibility: hidden;
-      display: flex; align-items: center; justify-content: center;
-      font-size: clamp(28px, 4vw, 48px); font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    }
-    .card-front { background: royalblue; }
-    .card-back  { background: var(--card); color: #000; transform: rotateY(180deg); }
-    .position-label { font-size: clamp(14px, 2vw, 18px); margin-top: 6px; color: var(--fg); }
+  .cards {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .card-container { perspective: 1000px; }
+  .card {
+    cursor: pointer;
+  }
+  .card-inner {
+    width: clamp(90px, 12vw, 120px);
+    height: clamp(150px, 21vw, 200px);
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+  }
+  .card.flipped .card-inner { transform: rotateY(180deg); cursor: default; }
+  .card-face {
+    position: absolute; width: 100%; height: 100%;
+    border-radius: 12px; backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(28px, 4vw, 48px); font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+  .card-front { background: royalblue; }
+  .card-back  { background: var(--card); color: #000; transform: rotateY(180deg); }
+  .position-label { font-size: clamp(14px, 2vw, 18px); margin-top: 6px; color: var(--fg); }
 
-    /* Buttons */
-    .button-row {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
-      margin-top: 15px;
-      flex-wrap: nowrap;
-    }
-    #gameButton {
-      padding: 14px 60px;
-      min-width: 220px;
-      font-size: 20px;
-      font-weight: bold;
-      border-radius: 8px;
-      background: royalblue;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      flex: 0 1 auto;
-    }
-    #howToPlayButton {
-      padding: 14px 40px;
-      min-width: 200px;
-      font-size: 20px;
-      font-weight: bold;
-      border-radius: 8px;
-      background: var(--bg);
-      color: var(--fg);
-      border: 2px solid var(--accent);
-      cursor: pointer;
-      flex: 0 1 auto;
-    }
-    #howToPlayButton:hover { background: #1e1e45; }
+  .scoreboard { 
+    display: flex; justify-content: center; gap: 16px; 
+    margin-top: 16px; flex-wrap: wrap; 
+  }
+  .scorebox {
+    background: var(--card); color: #000; padding: 10px 20px; border-radius: 8px;
+    font-size: 18px; min-width: 140px; font-weight: bold;
+  }
 
-    @media (max-width: 420px) {
-      .button-row { gap: 10px; }
-      #gameButton { padding: 12px 36px; min-width: 180px; font-size: 18px; }
-      #howToPlayButton { padding: 12px 26px; min-width: 150px; font-size: 18px; }
-    }
+  .button-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+  }
 
-    /* Scoreboard — force to one row */
-    .scoreboard{
-      display:flex !important;
-      flex-direction:row !important;
-      flex-wrap:nowrap !important;
-      gap:16px;
-      justify-content:center;
-      align-items:center;
-      max-width:520px;
-      margin:12px auto 0;
-    }
-    .scorebox{
-      flex:1 1 160px;
-      display:inline-flex;
-      justify-content:center;
-      align-items:center;
-      padding:10px 20px;
-      border-radius:8px;
-      background:#fff;
-      color:#000;
-      font-weight:bold;
-      min-width:0;
-    }
+  #gameButton {
+    padding: 14px 60px;
+    min-width: 220px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    background: royalblue;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
 
-    /* Status + animations */
-    #status { margin-top: 15px; font-size: clamp(16px, 2.4vw, 20px); font-weight: bold; }
+  #howToPlayButton {
+    padding: 14px 40px;
+    min-width: 200px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    border: 2px solid var(--accent);
+    cursor: pointer;
+  }
+  #howToPlayButton:hover { background: #1e1e45; }
 
-    @keyframes winCardFlash { 0%, 100% { background-color: gold; } 50% { background-color: white; } }
-    .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
+  @media (max-width: 420px) {
+    .button-row { gap: 10px; }
+    #gameButton { padding: 12px 36px; min-width: 180px; font-size: 18px; }
+    #howToPlayButton { padding: 12px 26px; min-width: 150px; font-size: 18px; }
+  }
 
-    @keyframes bustBackgroundFlash {
-      0%   { background-color: rgba(255,0,0,0.3); }
-      50%  { background-color: rgba(255,0,0,0.9); }
-      100% { background-color: rgba(255,0,0,0.3); }
-    }
-    .card.bustFlash .card-back {
-      animation: bustBackgroundFlash 0.6s infinite;
-      color: #fff;
-    }
+  @keyframes winCardFlash { 0%, 100% { background-color: gold; } 50% { background-color: white; } }
+  .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
 
-    .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
+  @keyframes bustBackgroundFlash {
+    0%   { background-color: rgba(255,0,0,0.3); }
+    50%  { background-color: rgba(255,0,0,0.9); }
+    100% { background-color: rgba(255,0,0,0.3); }
+  }
+  .card.bustFlash .card-back { animation: bustBackgroundFlash 0.6s infinite; color: #fff; }
 
-    /* Modal (How to Play) */
-    .modal-overlay{
-      position:fixed; inset:0; display:none; place-items:center;
-      background:rgba(0,0,0,.75); z-index:10000; backdrop-filter: blur(2px);
-    }
-    .modal-overlay.show{ display:grid; }
-    .modal-panel{
-      background:#1D1D3F; color:#fff; border-radius:12px;
-      width:min(420px, calc(100% - 40px)); padding:20px 22px;
-      text-align:left; box-shadow:0 10px 30px rgba(0,0,0,0.35);
-    }
-    .modal-panel h2{ margin:0 0 10px; text-align:center; }
-    .modal-panel p{ margin:8px 0; line-height:1.5; font-size:16px; }
-    .howto-actions{ text-align:center; margin-top:14px; }
-    .howto-actions button{
-      padding:10px 24px; background:#fff; color:#000;
-      border:none; border-radius:8px; font-weight:bold; cursor:pointer;
-    }
+  #status { margin-top: 15px; font-size: clamp(16px, 2.4vw, 20px); font-weight: bold; }
+  .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
 
-    /* Confetti canvas */
-    canvas.confetti { position: fixed; inset: 0; pointer-events: none; }
-  </style>
+  /* How-to modal */
+  #howToPlayModal {
+    display: none; position: fixed; z-index: 10000; left: 0; top: 0;
+    width: 100%; height: 100%; overflow: auto;
+    background-color: rgba(0,0,0,0.75);
+    backdrop-filter: blur(2px);
+  }
+  #howToPlayModal.show { display:block; }
+  #howToPlayContent {
+    background-color: #1D1D3F; color: white;
+    margin: 8% auto; padding: 20px 22px;
+    border-radius: 12px; max-width: 420px; width: calc(100% - 40px);
+    text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  #howToPlayContent h2 { text-align: center; margin: 0 0 10px; }
+  #howToPlayContent p { margin: 8px 0; line-height: 1.5; font-size: 16px; }
+  .howto-actions { text-align: center; margin-top: 14px; }
+  .howto-actions button {
+    padding: 10px 24px; background: var(--card); color: #000;
+    border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+  }
+
+  /* Confetti canvas */
+  canvas.confetti { position: fixed; inset: 0; pointer-events: none; }
+
+  /* Install button */
+  #installPromptBtn {
+    display: none;
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    padding: 12px 16px;
+    font-weight: bold;
+    border-radius: 10px;
+    border: 2px solid #fff;
+    background: #17173A;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    z-index: 10001;
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
 
-  <img class="logo" src="logo.png?v=3" alt="Lucky 7"/>
+<img class="logo" src="logo.png?v=3" alt="Lucky 7"/>
 
-  <div class="cards" id="cardContainer"></div>
-  <div id="status">Pick any card to start.</div>
+<div class="cards" id="cardContainer"></div>
+<div id="status">Pick any card to start.</div>
 
-  <div class="button-row">
-    <button id="gameButton" onclick="startGame()">Start</button>
-    <button id="howToPlayButton" onclick="showHowToPlay()">How to Play</button>
-  </div>
+<div class="button-row">
+  <button id="gameButton" onclick="startGame()">Start</button>
+  <button id="howToPlayButton" onclick="showHowToPlay()">How to Play</button>
+</div>
 
-  <div class="scoreboard">
-    <div class="scorebox">Won: <span id="winCount">0</span></div>
-    <div class="scorebox">Lost: <span id="loseCount">0</span></div>
-  </div>
+<div class="scoreboard">
+  <div class="scorebox">Won: <span id="winCount">0</span></div>
+  <div class="scorebox">Lost: <span id="loseCount">0</span></div>
+</div>
 
-  <div class="copyright">© Kev Shirreffs 2025</div>
+<div class="copyright">© Kev Shirreffs 2025</div>
 
-  <!-- Modal -->
-  <div id="howToPlayModal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="howto-title">
-      <h2 id="howto-title">How to Play</h2>
-      <p>🎯 You have 7 facedown cards numbered <strong>1 to 7</strong> on the front.</p>
-      <p>🔄 The back of each card has a number (also <strong>1 to 7</strong>) in a random order.</p>
-      <p>🃏 Start by picking any card.</p>
-      <p>📍 The number you reveal tells you which <strong>position</strong> you must flip next.</p>
-      <p>🏆 Reveal <strong>all 7 cards</strong> without repeating a position to win.</p>
-      <p>❌ If a number points to a card that’s already face-up, you <strong>bust</strong> and lose.</p>
-      <div class="howto-actions">
-        <button onclick="closeHowToPlay()">Got it!</button>
-      </div>
+<!-- How-to modal -->
+<div id="howToPlayModal" aria-hidden="true">
+  <div id="howToPlayContent">
+    <h2>How to Play</h2>
+    <p>🎯 You have 7 facedown cards numbered <strong>1 to 7</strong> on the front.</p>
+    <p>🔄 The back of each card has a number (also <strong>1 to 7</strong>) in a random order.</p>
+    <p>🃏 Start by picking any card.</p>
+    <p>📍 The number you reveal tells you which <strong>position</strong> you must flip next.</p>
+    <p>🏆 Reveal <strong>all 7 cards</strong> without repeating a position to win.</p>
+    <p>❌ If a number points to a card that’s already face-up, you <strong>bust</strong> and lose.</p>
+    <div class="howto-actions">
+      <button onclick="closeHowToPlay()">Got it!</button>
     </div>
   </div>
+</div>
 
-  <!-- Sounds -->
-  <audio id="winSound"    src="applause.mp3"></audio>
-  <audio id="bustSound"   src="wrong.mp3" preload="auto"></audio>
-  <audio id="flipSound"   src="bubble.mp3" preload="auto"></audio>
+<!-- Install (desktop/Android) -->
+<button id="installPromptBtn">Install App</button>
 
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
