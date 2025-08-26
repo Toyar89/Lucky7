@@ -13,14 +13,7 @@ const URLS_TO_CACHE = [
   "./icon-192.png",
   "./icon-512.png",
   "./icon-192-maskable.png",
-  "./icon-512-maskable.png",
-
-  // Sounds (make sure these exist in the repo)
-  "./applause.mp3",
-  "./bubble.mp3",
-  "./timeup.mp3",
-  "./rude.mp3",
-  "./wrong.mp3",
+  "./icon-512-maskable.png", 
 ];
 
 self.addEventListener("install", (event) => {
