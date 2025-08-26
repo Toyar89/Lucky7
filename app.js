@@ -180,9 +180,11 @@ function handleTurn(index, cardElement, backElement) {
     return;
   }
 
-  // Play flip sound (ensure context resumed so first click works on Android)
-  AudioUnlock.resume();
-  playSound('flipSound');
+ // Play flip sound reliably on Android first tap
+AudioUnlock.resume();
+// small delay lets the resume/prime settle before we play
+setTimeout(() => playSound('flipSound'), 80);
+
 
   // Win if all revealed
   if (revealed.every(Boolean)) {
@@ -269,3 +271,4 @@ startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
+
