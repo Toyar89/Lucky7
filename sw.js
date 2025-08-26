@@ -1,5 +1,5 @@
 // sw.js — Lucky7 PWA
-const CACHE_NAME = "lucky7-v17"; // bump on each deploy
+const CACHE_NAME = "lucky7-v18"; // bump on each deploy
 
 // Files to cache for offline
 const URLS_TO_CACHE = [
