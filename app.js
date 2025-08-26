@@ -1,77 +1,74 @@
-/* ========== Audio warmup & helpers ========== */
-let audioWarmed = false;
-
-function warmUpAudioOnce() {
-  if (audioWarmed) return;
-  audioWarmed = true;
-  ['flipSound','winSound','bustSound'].forEach(id=>{
-    const a = document.getElementById(id);
-    if (!a) return;
-    try {
-      a.muted = true;
-      a.play().then(()=>{ a.pause(); a.currentTime=0; a.muted=false; })
-               .catch(()=>{ /* ok */ });
-    } catch(_) {}
-  });
-}
-
-// run BEFORE any card handler, once
-document.addEventListener('pointerdown', function onFirstPointer(){
-  warmUpAudioOnce();
-  document.removeEventListener('pointerdown', onFirstPointer, true);
-}, { once:true, capture:true });
-
-function playSound(id, { clone=false } = {}) {
+/* =======================
+   Audio helpers
+   ======================= */
+function playSound(id, { clone = false } = {}) {
   const el = document.getElementById(id);
-  if (!el) return Promise.resolve(false);
-  try{
+  if (!el) return;
+  try {
     if (clone) {
       const node = el.cloneNode(true);
       node.volume = el.volume ?? 1;
-      node.addEventListener('ended', ()=>node.remove());
+      node.addEventListener('ended', () => node.remove());
       document.body.appendChild(node);
       node.currentTime = 0;
-      return node.play().then(()=>true).catch(()=>{ node.remove(); return false; });
+      node.play().catch(() => {});
     } else {
       el.currentTime = 0;
-      return el.play().then(()=>true).catch(()=>false);
+      el.play().catch(() => {});
     }
-  }catch(_){ return Promise.resolve(false); }
+  } catch (_) {}
 }
 
-function playFallbackTick(){
-  try{
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    const ctx = playFallbackTick._ctx || new AC();
-    playFallbackTick._ctx = ctx;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'square'; o.frequency.value = 1200;
-    g.gain.value = 0.0001;
-    o.connect(g).connect(ctx.destination);
-    const t = ctx.currentTime;
-    o.start(t);
-    g.gain.exponentialRampToValueAtTime(0.08, t+0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t+0.08);
-    o.stop(t+0.09);
-  }catch(_){}
-}
+/* ---- WebAudio unlock helper (Android first tap) ---- */
+const AudioUnlock = (() => {
+  let ctx = null;
+  function resume() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) ctx = new AC();
+    }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
+  function primeTags() {
+    ['flipSound','winSound','bustSound'].forEach(id => {
+      const a = document.getElementById(id);
+      if (!a) return;
+      a.muted = true;
+      a.play().then(() => {
+        a.pause(); a.currentTime = 0; a.muted = false;
+      }).catch(() => {});
+    });
+  }
+  function onFirstGesture() {
+    resume();
+    primeTags();
+    document.removeEventListener('pointerdown', onFirstGesture);
+  }
+  document.addEventListener('pointerdown', onFirstGesture, { once:true });
+  return { resume };
+})();
 
-/* ========== Confetti (light) ========== */
+/* =======================
+   Lightweight Confetti
+   ======================= */
 (function () {
   const canvas = document.createElement('canvas');
   canvas.className = 'confetti';
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d');
-  let W,H,particles=[],running=false,endTime=0;
+  let W, H, particles = [], running = false, endTime = 0;
 
-  function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
   window.addEventListener('resize', resize); resize();
 
   function spawn(n=5){
-    for(let i=0;i<n;i++){
-      particles.push({x:Math.random()*W,y:-10,vx:(Math.random()-0.5)*2,vy:2+Math.random()*3,size:4+Math.random()*6,rot:Math.random()*Math.PI,vr:(Math.random()-0.5)*0.2,shape:Math.random()<.5?'rect':'circle'});
+    for (let i=0;i<n;i++){
+      particles.push({
+        x: Math.random()*W, y: -10,
+        vx: (Math.random()-0.5)*2, vy: 2+Math.random()*3,
+        size: 4+Math.random()*6, rot: Math.random()*Math.PI, vr: (Math.random()-0.5)*0.2,
+        shape: Math.random()<0.5 ? 'rect' : 'circle'
+      });
     }
   }
   function step(){
@@ -86,28 +83,36 @@ function playFallbackTick(){
       ctx.restore();
     });
   }
-  function loop(){ if(!running) return; step(); if(Date.now()<endTime){ spawn(3); requestAnimationFrame(loop);} else { running=false; particles=[]; ctx.clearRect(0,0,W,H);} }
-  window.launchConfetti = d => { endTime=Date.now()+(d||5000); if(!running){ running=true; loop(); } };
+  function loop(){ if(!running) return; step(); if(Date.now()<endTime){ spawn(3); requestAnimationFrame(loop); } else { running=false; particles=[]; ctx.clearRect(0,0,W,H); } }
+  window.launchConfetti = function(d=5000){ endTime=Date.now()+d; if(!running){ running=true; loop(); } };
 })();
 
-/* ========== Game state ========== */
-let cards=[], revealed=[], gameOver=false, requiredPosition=null, winCount=0, loseCount=0;
-let mustFlipFirstClick = true;
+/* =======================
+   Game State
+   ======================= */
+let cards = [];
+let revealed = [];
+let gameOver = false;
+let requiredPosition = null;
+let firstMoveMade = false;
+let winCount = 0, loseCount = 0;
 
-/* ========== Build / Start ========== */
-function startGame(){
+/* =======================
+   Build / Start
+   ======================= */
+function startGame() {
   cards = shuffle([1,2,3,4,5,6,7]);
   revealed = Array(7).fill(false);
   gameOver = false;
   requiredPosition = null;
-  mustFlipFirstClick = true;
+  firstMoveMade = false;
 
   const container = document.getElementById('cardContainer');
   container.innerHTML = '';
 
-  for(let i=0;i<7;i++){
-    const wrap = document.createElement('div');
-    wrap.className = 'card-container';
+  for (let i = 0; i < 7; i++) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card-container';
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -124,118 +129,142 @@ function startGame(){
     back.textContent = '';
 
     inner.appendChild(front); inner.appendChild(back);
-    card.appendChild(inner); wrap.appendChild(card);
+    card.appendChild(inner); wrapper.appendChild(card);
 
     const label = document.createElement('div');
     label.className = 'position-label';
-    label.textContent = i+1;
-    wrap.appendChild(label);
+    label.textContent = i + 1;
+    wrapper.appendChild(label);
 
-    container.appendChild(wrap);
+    container.appendChild(wrapper);
 
-    card.addEventListener('pointerdown', ()=>handleTurn(i, card, back), { passive:true });
+    // pointerdown = snappier on mobile & counts as a user gesture
+    card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
   }
 
   const statusEl = document.getElementById('status');
   if (statusEl) statusEl.textContent = 'Pick any card to start.';
   const btn = document.getElementById('gameButton');
-  if (btn){ btn.textContent='Restart'; btn.onclick = startGame; }
+  if (btn) { btn.textContent = 'Restart'; btn.onclick = startGame; }
 }
 
-/* ========== Turn logic ========== */
-function handleTurn(index, cardEl, backEl){
+/* =======================
+   Turn Logic
+   ======================= */
+function handleTurn(index, cardElement, backElement) {
   if (gameOver) return;
 
-  const statusEl = document.getElementById('status');
-  if (statusEl && statusEl.textContent) statusEl.textContent = '';
+  // Clear the prompt on first action
+  if (!firstMoveMade) {
+    const s = document.getElementById('status');
+    if (s) s.textContent = '';
+    firstMoveMade = true;
+  }
 
-  if (!audioWarmed) warmUpAudioOnce();
+  // Chain rule after the first flip
+  if (requiredPosition !== null && index !== requiredPosition - 1) return;
+  if (revealed[index]) return;
 
-  // First click always flips
-  if (mustFlipFirstClick){
-    mustFlipFirstClick = false;
-    if (revealed[index]) return;
+  // Reveal this card
+  revealed[index] = true;
+  cardElement.classList.add('flipped');
+  backElement.textContent = cards[index];
 
-    revealed[index] = true;
-    cardEl.classList.add('flipped');
-    backEl.textContent = cards[index];
+  // Determine next required position
+  const nextPos = cards[index];
+  requiredPosition = nextPos;
 
-    if (revealed.every(Boolean)){ handleWin(); return; }
-
-    requiredPosition = cards[index];
-    if (revealed[requiredPosition-1]){ bust(index); return; }
-
-    playSound('flipSound', { clone:true }).then(ok=>{ if(!ok) playFallbackTick(); });
+  // If that next required position is already face-up → bust
+  if (revealed[nextPos - 1]) {
+    bust(index);
     return;
   }
 
-  // Chain enforced after first
-  if (requiredPosition !== null && index !== requiredPosition-1) return;
-  if (revealed[index]) return;
+  // Play flip sound (ensure context resumed so first click works on Android)
+  AudioUnlock.resume();
+  playSound('flipSound');
 
-  revealed[index] = true;
-  cardEl.classList.add('flipped');
-  backEl.textContent = cards[index];
-
-  if (revealed.every(Boolean)){ handleWin(); return; }
-
-  requiredPosition = cards[index];
-  if (revealed[requiredPosition-1]){ bust(index); return; }
-
-  playSound('flipSound', { clone:true });
+  // Win if all revealed
+  if (revealed.every(Boolean)) {
+    handleWin();
+  }
 }
 
-/* ========== Win / Bust ========== */
-function handleWin(){
-  playSound('winSound', { clone:true });
+/* =======================
+   Win / Bust
+   ======================= */
+function handleWin() {
+  playSound('winSound');
   winCount++;
-  const winEl = document.getElementById('winCount'); if (winEl) winEl.textContent = String(winCount);
-  const statusEl = document.getElementById('status'); if (statusEl) statusEl.textContent = '🎉 You win! All cards revealed.';
+  const winEl = document.getElementById('winCount');
+  if (winEl) winEl.textContent = String(winCount);
+  const statusEl = document.getElementById('status');
+  if (statusEl) statusEl.textContent = '🎉 You win! All cards revealed.';
 
-  const all = document.querySelectorAll('.card');
-  all.forEach(c=>{
+  const allCards = document.querySelectorAll('.card');
+  allCards.forEach(c => {
     c.classList.remove('bustFlash');
-    c.classList.add('flipped','winFlash');
+    c.classList.add('flipped', 'winFlash');
     const idx = c.dataset.index;
     c.querySelector('.card-back').textContent = cards[idx];
   });
 
   launchConfetti(5000);
-  setTimeout(()=> document.querySelectorAll('.card').forEach(c=>c.classList.remove('winFlash')), 5000);
+  setTimeout(() => allCards.forEach(c => c.classList.remove('winFlash')), 5000);
+
   gameOver = true;
 }
 
-function bust(idx){
-  playSound('bustSound', { clone:true });
+function bust(clickedIndex) {
+  playSound('bustSound', { clone: true });
   loseCount++;
-  const loseEl = document.getElementById('loseCount'); if (loseEl) loseEl.textContent = String(loseCount);
+  const loseEl = document.getElementById('loseCount');
+  if (loseEl) loseEl.textContent = String(loseCount);
 
-  const card = document.querySelectorAll('.card')[idx];
-  card.classList.add('flipped','bustFlash');
+  const card = document.querySelectorAll('.card')[clickedIndex];
+  card.classList.add('flipped', 'bustFlash');
 
   const back = card.querySelector('.card-back');
-  if (back && back.textContent.trim()==='') back.textContent = cards[idx];
+  if (back && back.textContent.trim() === '') back.textContent = cards[clickedIndex];
 
-  const statusEl = document.getElementById('status'); if (statusEl) statusEl.textContent = '❌ Try again';
+  const statusEl = document.getElementById('status');
+  if (statusEl) statusEl.textContent = '❌ Try again';
   gameOver = true;
 }
 
-/* ========== Helpers ========== */
-function shuffle(arr){
-  const a=[...arr];
-  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+/* =======================
+   Helpers & Modal
+   ======================= */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
   return a;
 }
 
-function showHowToPlay(){ const m=document.getElementById('howToPlayModal'); if(m){ m.classList.add('show'); m.setAttribute('aria-hidden','false'); } }
-function closeHowToPlay(){ const m=document.getElementById('howToPlayModal'); if(m){ m.classList.remove('show'); m.setAttribute('aria-hidden','true'); } }
-
-/* ========== SW register (unchanged) ========== */
-if ('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); });
+function showHowToPlay(){
+  const m = document.getElementById("howToPlayModal");
+  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+}
+function closeHowToPlay(){
+  const m = document.getElementById("howToPlayModal");
+  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
 }
 
-/* ========== Init ========== */
+/* =======================
+   Service worker (optional; safe to keep)
+   ======================= */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+/* =======================
+   Init
+   ======================= */
 startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
