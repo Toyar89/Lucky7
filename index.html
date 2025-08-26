@@ -33,25 +33,17 @@
     margin: 0 auto 18px;
   }
 
-  /* ==== Card grid ==== */
   .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 12px;
+    display: flex;
     justify-content: center;
-    max-width: 720px;
-    margin: 20px auto;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 20px 0;
   }
-  @media (max-width: 500px) {
-    .cards {
-      grid-template-columns: repeat(3, 1fr); /* force 3-3-1 layout on small screens */
-    }
-  }
-
   .card-container { perspective: 1000px; }
   .card-inner {
-    width: 100%;
-    aspect-ratio: 3/5; /* keeps card proportion */
+    width: clamp(90px, 12vw, 120px);
+    height: clamp(150px, 21vw, 200px);
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.6s;
@@ -62,21 +54,20 @@
     position: absolute; width: 100%; height: 100%;
     border-radius: 12px; backface-visibility: hidden;
     display: flex; align-items: center; justify-content: center;
-    font-size: clamp(24px, 4vw, 48px); font-weight: bold;
+    font-size: clamp(28px, 4vw, 48px); font-weight: bold;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
   }
   .card-front { background: royalblue; }
   .card-back  { background: var(--card); color: #000; transform: rotateY(180deg); }
-  .position-label { font-size: clamp(12px, 2vw, 16px); margin-top: 6px; color: var(--fg); }
+  .position-label { font-size: clamp(14px, 2vw, 18px); margin-top: 6px; color: var(--fg); }
 
-  /* ==== Scoreboard ==== */
   .scoreboard {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 20px;
     margin-top: 15px;
-    flex-wrap: nowrap;
+    flex-wrap: nowrap; /* force them in one row */
   }
   .scorebox {
     background: var(--card);
@@ -89,7 +80,6 @@
     text-align: center;
   }
 
-  /* ==== Buttons ==== */
   .button-row {
     display: flex;
     justify-content: center;
@@ -98,6 +88,7 @@
     margin-top: 15px;
     flex-wrap: nowrap;
   }
+
   #gameButton {
     padding: 14px 60px;
     min-width: 220px;
@@ -108,7 +99,9 @@
     color: #fff;
     border: none;
     cursor: pointer;
+    flex: 0 1 auto;
   }
+
   #howToPlayButton {
     padding: 14px 40px;
     min-width: 200px;
@@ -119,6 +112,7 @@
     color: var(--fg);
     border: 2px solid var(--accent);
     cursor: pointer;
+    flex: 0 1 auto;
   }
   #howToPlayButton:hover { background: #1e1e45; }
 
@@ -128,7 +122,6 @@
     #howToPlayButton { padding: 12px 26px; min-width: 150px; font-size: 18px; }
   }
 
-  /* ==== Flashes ==== */
   @keyframes winCardFlash { 0%, 100% { background-color: gold; } 50% { background-color: white; } }
   .winFlash .card-back { animation: winCardFlash 0.4s alternate infinite; }
 
@@ -146,7 +139,6 @@
 
   .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
 
-  /* ==== Modal ==== */
   #howToPlayModal {
     display: none; position: fixed; z-index: 10000; left: 0; top: 0;
     width: 100%; height: 100%; overflow: auto;
