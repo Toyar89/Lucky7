@@ -1,20 +1,17 @@
-// sw.js — Lucky7 PWA
-const CACHE_NAME = "lucky7-v19"; // bump on each deploy
+// sw.js
+const CACHE_NAME = "lucky7-v18"; // bump
 
-// Files to cache for offline
 const URLS_TO_CACHE = [
   "./",
   "./index.html",
   "./manifest.json",
   "./app.js",
   "./logo.png",
-
-  // Icons
-  "./icon-192.png",
-  "./icon-512.png",
   "./icon-192-maskable.png",
-  "./icon-512-maskable.png", 
+  "./icon-512-maskable.png"
+  // (remove icon-192.png and icon-512.png if they don't exist)
 ];
+
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
