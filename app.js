@@ -1,4 +1,25 @@
 /* =======================
+   Audio helpers (kept in case you re-add sounds later)
+   ======================= */
+function playSound(id, { clone = false } = {}) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    if (clone) {
+      const node = el.cloneNode(true);
+      node.volume = el.volume ?? 1;
+      node.addEventListener('ended', () => node.remove());
+      document.body.appendChild(node);
+      node.currentTime = 0;
+      node.play().catch(() => {});
+    } else {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    }
+  } catch (_) {}
+}
+
+/* =======================
    Lightweight Confetti
    ======================= */
 (function () {
@@ -45,8 +66,6 @@ let revealed = [];
 let gameOver = false;
 let requiredPosition = null;
 let winCount = 0, loseCount = 0;
-
-// First tap flips immediately
 let mustFlipFirstClick = true;
 
 /* =======================
@@ -90,7 +109,7 @@ function startGame() {
 
     container.appendChild(wrapper);
 
-    card.addEventListener("pointerdown", () => handleTurn(i, card, back), { passive: true });
+    card.addEventListener("click", () => handleTurn(i, card, back));
   }
 
   const statusEl = document.getElementById('status');
@@ -108,7 +127,6 @@ function handleTurn(index, cardElement, backElement) {
   const statusEl = document.getElementById('status');
   if (statusEl && statusEl.textContent) statusEl.textContent = '';
 
-  // First click always flips
   if (mustFlipFirstClick) {
     mustFlipFirstClick = false;
     if (revealed[index]) return;
@@ -124,7 +142,6 @@ function handleTurn(index, cardElement, backElement) {
     return;
   }
 
-  // After first click, follow the chain
   if (requiredPosition !== null && index !== requiredPosition - 1) return;
   if (revealed[index]) return;
 
@@ -157,12 +174,17 @@ function handleWin() {
     c.querySelector('.card-back').textContent = cards[idx];
   });
 
-  launchConfetti(3000);
-  setTimeout(() => allCards.forEach(c => c.classList.remove('winFlash')), 3000);
+  launchConfetti(5000);
+  setTimeout(() => allCards.forEach(c => c.classList.remove('winFlash')), 5000);
+
   gameOver = true;
 }
 
 function bust(clickedIndex) {
+  loseCount++;
+  const loseEl = document.getElementById('loseCount');
+  if (loseEl) loseEl.textContent = String(loseCount);
+
   const card = document.querySelectorAll('.card')[clickedIndex];
   card.classList.add('flipped', 'bustFlash');
 
@@ -171,10 +193,6 @@ function bust(clickedIndex) {
 
   const statusEl = document.getElementById('status');
   if (statusEl) statusEl.textContent = '❌ Try again';
-
-  const loseEl = document.getElementById('loseCount');
-  if (loseEl) loseEl.textContent = String((+loseEl.textContent||0) + 1);
-
   gameOver = true;
 }
 
@@ -192,15 +210,15 @@ function shuffle(arr) {
 
 function showHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.add("show"); m.setAttribute("aria-hidden","false"); }
+  if (m) { m.style.display = "block"; }
 }
 function closeHowToPlay(){
   const m = document.getElementById("howToPlayModal");
-  if (m) { m.classList.remove("show"); m.setAttribute("aria-hidden","true"); }
+  if (m) { m.style.display = "none"; }
 }
 
 /* =======================
-   PWA install flow (desktop & Android)
+   PWA install flow (desktop only)
    ======================= */
 let deferredPrompt = null;
 const installBtn = document.getElementById('installPromptBtn');
@@ -208,16 +226,20 @@ const installBtn = document.getElementById('installPromptBtn');
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  // Prefer to show button on desktop/Android; iOS has no BIP event.
-  if (installBtn) installBtn.style.display = 'block';
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!isMobile && installBtn) {
+    installBtn.style.display = 'block';
+  }
 });
 
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    installBtn.style.display = 'none';
+    const choice = await deferredPrompt.userChoice;
+    if (choice.outcome === 'accepted') {
+      installBtn.style.display = 'none';
+    }
     deferredPrompt = null;
   });
 }
@@ -232,8 +254,7 @@ window.addEventListener('appinstalled', () => {
    ======================= */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/Lucky7/sw.js')
-.catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
 
@@ -244,4 +265,3 @@ startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
 window.closeHowToPlay = closeHowToPlay;
-
