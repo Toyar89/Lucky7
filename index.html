@@ -139,12 +139,29 @@
 
   .copyright { font-size: 1em; margin-top: 10px; opacity: 0.8; }
 
-  #howToPlayModal {
-    display: none; position: fixed; z-index: 10000; left: 0; top: 0;
-    width: 100%; height: 100%; overflow: auto;
-    background-color: rgba(0,0,0,0.75);
-    backdrop-filter: blur(2px);
-  }
+ #howToPlayModal {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.75);
+  backdrop-filter: blur(2px);
+}
+
+/* ✅ When .show is added, modal appears */
+#howToPlayModal.show {
+  display: block;
+}
+
+/* ✅ Optional: lock background scroll while modal is open */
+body.modal-open {
+  overflow: hidden;
+}
+
   #howToPlayContent {
     background-color: #1D1D3F; color: white;
     margin: 8% auto; padding: 20px 22px;
@@ -207,3 +224,4 @@
 <script src="app.js"></script>
 </body>
 </html>
+
