@@ -1,5 +1,5 @@
 // ---- Lucky7 SW: instant, safe updates ----
-const VERSION    = 'v6';                 // BUMP THIS each release
+const VERSION    = 'v7';                 // BUMP THIS each release
 const CACHE_NAME = `lucky7-cache-${VERSION}`;
 
 const ASSETS = [
@@ -54,3 +54,4 @@ self.addEventListener('fetch', (event) => {
     caches.match(req).then(r => r || fetch(req))
   );
 });
+
