@@ -1,5 +1,6 @@
-const CACHE_NAME = "lucky7-cache-v2";
+const CACHE_NAME = "lucky7-cache-v1";
 const urlsToCache = [
+  "./",
   "index.html",
   "app.js",
   "logo.png",
@@ -16,6 +17,6 @@ self.addEventListener("install", event => {
 
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    caches.match(event.request).then(resp => resp || fetch(event.request))
   );
 });
