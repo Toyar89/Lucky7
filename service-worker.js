@@ -1,5 +1,5 @@
 // ---- Lucky7 SW: instant, safe updates ----
-const VERSION    = 'v7';                 // BUMP THIS each release
+const VERSION    = 'v6';                 // BUMP THIS each release
 const CACHE_NAME = `lucky7-cache-${VERSION}`;
 
 const ASSETS = [
@@ -12,12 +12,12 @@ const ASSETS = [
   'manifest.json'
 ];
 
-// Install: pre-cache and be ready to take over
+// Install: pre-cache
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
 });
 
-// Activate: claim clients and purge old caches
+// Activate: take control immediately and clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -26,12 +26,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Allow page to ask this SW to activate NOW
+// Allow page to request immediate activation
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
-// Fetch: network-first for HTML, cache-first for others
+// Fetch: network-first for HTML; cache-first for others
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const isHTML =
