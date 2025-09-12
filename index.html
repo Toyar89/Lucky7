@@ -100,7 +100,7 @@
     .button-row { display:flex; justify-content:center; align-items:center; gap:16px; margin-top:15px; }
     #howToPlayButton {
       padding:14px 40px; min-width:200px; font-size:20px; font-weight:bold;
-      border-radius:8px; background:var(--bg); color:var(--fg);
+      border-radius:8px; background: var(--bg); color: var(--fg);
       border:2px solid var(--accent); cursor:pointer;
     }
     #howToPlayButton:hover { background:#1e1e45; }
@@ -121,8 +121,8 @@
     .win-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:10001; pointer-events:none; }
     .win-overlay .text {
       font-size: clamp(48px, 10vw, 140px); font-weight: 900; color: #FFD700;
-      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px  2px 0 #000, 2px  2px 0 #000,
-                   0 -3px 0 #000, 0  3px 0 #000, -3px 0 0 #000, 3px 0 0 #000;
+      text-shadow: -2px -2px 0 #000,  2px -2px 0 #000, -2px  2px 0 #000,  2px  2px 0 #000,
+                   0  -3px 0 #000,    0   3px 0 #000, -3px  0   0 #000,  3px  0   0 #000;
       animation: winTextFlash .5s infinite alternate;
     }
     @keyframes winTextFlash { 0%{opacity:1;transform:scale(1)} 100%{opacity:.7;transform:scale(1.04)} }
@@ -210,10 +210,10 @@
     </div>
   </div>
 
-  <!-- Game logic -->
+  <!-- Your game logic -->
   <script src="app.js"></script>
 
-  <!-- Viewport height patch -->
+  <!-- Viewport height patch (fallback for older Android/Samsung if 100dvh unsupported) -->
   <script>
     (function ensureFullHeight() {
       const app = document.querySelector('.app');
@@ -236,7 +236,7 @@
     })();
   </script>
 
-  <!-- Fullscreen toggle logic -->
+  <!-- Fullscreen toggle logic (⛶ to enter, × to exit) -->
   <script>
     (function fullscreenToggle() {
       const btn = document.getElementById('fsToggle');
@@ -274,10 +274,34 @@
     })();
   </script>
 
-  <!-- PWA SW -->
+  <!-- PWA service worker: update-on-second-open (or immediately) -->
   <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js").catch(console.error);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js').then(reg => {
+        // If an updated SW is already waiting, activate it now.
+        if (reg.waiting) {
+          reg.waiting.postMessage('SKIP_WAITING');
+        }
+
+        // If a new SW is found, tell it to skip waiting as soon as it's installed.
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          if (!newSW) return;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              newSW.postMessage('SKIP_WAITING');
+            }
+          });
+        });
+
+        // When the new SW takes control, reload once to show the fresh app.
+        let refreshed = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshed) return;
+          refreshed = true;
+          window.location.reload();
+        });
+      }).catch(console.error);
     }
   </script>
 </body>
