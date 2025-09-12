@@ -1,5 +1,5 @@
 // ---- Lucky7 SW: instant, safe updates ----
-const VERSION    = 'v6';                 // BUMP THIS each release
+const VERSION    = 'v7';                 // bump each release
 const CACHE_NAME = `lucky7-cache-${VERSION}`;
 
 const ASSETS = [
