@@ -1,5 +1,5 @@
 // ---- Lucky7 service worker (safe instant update) ----
-const VERSION    = 'v5';                         // bump on each release
+const VERSION    = 'v6';                         // bump on each release
 const CACHE_NAME = `lucky7-cache-${VERSION}`;
 
 const ASSETS = [
@@ -58,3 +58,4 @@ self.addEventListener('fetch', (event) => {
     caches.match(req).then(r => r || fetch(req))
   );
 });
+
