@@ -278,15 +278,11 @@ window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
 });
 
-/* ======================= Service worker ======================= */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  });
-}
+
 
 /* ======================= Init ======================= */
 startGame();
 window.startGame = startGame;
 window.showHowToPlay = showHowToPlay;
+
 window.closeHowToPlay = closeHowToPlay;
