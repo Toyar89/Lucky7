@@ -1,9 +1,9 @@
-// ---- Lucky7 service worker (safe instant update) ----
-const VERSION    = 'v6';                         // bump on each release
+// ---- Lucky7 SW: instant, safe updates ----
+const VERSION    = 'v7';                 // BUMP THIS each release
 const CACHE_NAME = `lucky7-cache-${VERSION}`;
 
 const ASSETS = [
-  './',                 // site root
+  './',
   'index.html',
   'app.js',
   'logo.png',
@@ -12,39 +12,36 @@ const ASSETS = [
   'manifest.json'
 ];
 
-// Install: precache and activate immediately
+// Install: pre-cache and be ready to take over
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // take control ASAP
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
 });
 
 // Activate: claim clients and purge old caches
 self.addEventListener('activate', (event) => {
-  clients.claim();
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
 });
 
-// Fetch:
-// - HTML/navigation => network-first so new deploys show up
-// - Everything else => cache-first
+// Allow page to ask this SW to activate NOW
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+// Fetch: network-first for HTML, cache-first for others
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
   const isHTML =
     req.mode === 'navigate' ||
-    (req.destination === 'document') ||
+    req.destination === 'document' ||
     (req.headers.get('accept') || '').includes('text/html');
 
   if (isHTML) {
     event.respondWith(
       fetch(req).then(r => {
-        // Optionally update cache with latest HTML
         const copy = r.clone();
         caches.open(CACHE_NAME).then(c => c.put(req, copy));
         return r;
@@ -53,9 +50,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // cache-first for other assets
   event.respondWith(
     caches.match(req).then(r => r || fetch(req))
   );
 });
-
