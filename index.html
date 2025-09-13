@@ -119,13 +119,28 @@
     .bust-label.top{ top:6px } .bust-label.bottom{ bottom:6px }
 
     .win-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:10001; pointer-events:none; }
+
+    /* 🔥 Updated YOU WIN style */
     .win-overlay .text {
-      font-size: clamp(48px, 10vw, 140px); font-weight: 900; color: #FFD700;
-      text-shadow: -2px -2px 0 #000,  2px -2px 0 #000, -2px  2px 0 #000,  2px  2px 0 #000,
-                   0  -3px 0 #000,    0   3px 0 #000, -3px  0   0 #000,  3px  0   0 #000;
-      animation: winTextFlash .5s infinite alternate;
+      font-size: clamp(64px, 14vw, 200px);
+      font-weight: 900;
+      color: #FFD700; /* Solid gold */
+      text-shadow:
+        -4px -4px 0 #000,
+         4px -4px 0 #000,
+        -4px  4px 0 #000,
+         4px  4px 0 #000,
+         0px -5px 0 #000,
+         0px  5px 0 #000,
+        -5px  0px 0 #000,
+         5px  0px 0 #000; /* Thicker outline */
+      animation: winTextFlash 0.3s infinite alternate; /* Faster pulse */
     }
-    @keyframes winTextFlash { 0%{opacity:1;transform:scale(1)} 100%{opacity:.7;transform:scale(1.04)} }
+    @keyframes winTextFlash {
+      0%   { transform: scale(1); }
+      100% { transform: scale(1.08); }
+    }
+
     .win-overlay.show { display:flex; }
 
     .copyright { font-size:1em; margin-top:10px; opacity:.8; }
@@ -210,7 +225,7 @@
     </div>
   </div>
 
-  <!-- Update banner (hidden by default) -->
+  <!-- Update banner -->
   <div id="updateBanner" style="
     position: fixed;
     bottom: 0; left: 0; right: 0;
@@ -228,10 +243,10 @@
     ">Update now</button>
   </div>
 
-  <!-- Your game logic -->
+  <!-- Game logic -->
   <script src="app.js"></script>
 
-  <!-- Viewport height patch (fallback if 100dvh unsupported) -->
+  <!-- Viewport height patch -->
   <script>
     (function ensureFullHeight() {
       const app = document.querySelector('.app');
@@ -250,7 +265,7 @@
     })();
   </script>
 
-  <!-- Fullscreen toggle logic (⛶ to enter, × to exit) -->
+  <!-- Fullscreen toggle -->
   <script>
     (function fullscreenToggle() {
       const btn = document.getElementById('fsToggle');
@@ -277,7 +292,7 @@
     })();
   </script>
 
-  <!-- PWA service worker with update banner -->
+  <!-- SW with update banner -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js?v=v7').then(reg => {
@@ -286,13 +301,9 @@
           const reloadBtn = document.getElementById('reloadBtn');
           if (!banner || !reloadBtn) return;
           banner.style.display = 'flex';
-          reloadBtn.onclick = () => worker.postMessage('SKIP_WAITING'));
+          reloadBtn.onclick = () => worker.postMessage('SKIP_WAITING');
         }
-
-        // If a new SW is already waiting
         if (reg.waiting) showUpdateBanner(reg.waiting);
-
-        // When a new SW is found, show banner once it's installed
         reg.addEventListener('updatefound', () => {
           const newSW = reg.installing;
           if (!newSW) return;
@@ -302,8 +313,6 @@
             }
           });
         });
-
-        // When the new SW activates, reload once to show the fresh app
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           window.location.reload();
         });
